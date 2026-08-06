@@ -1,0 +1,47 @@
+image:
+  repository: ghcr.io/jo-hoe/doctorlib-navigator
+  pullPolicy: IfNotPresent
+  tag: ""
+
+# -- Configuration passed as config.yaml to the application
+config:
+  doctors: []
+  notification: {}
+  check_interval_seconds: 300
+  availability_limit: 5
+
+job:
+  # -- Cron schedule for the CronJob (daemon mode uses check_interval_seconds instead)
+  schedule: "*/5 * * * *"
+  timeZone: "Europe/Berlin"
+  ttlSecondsAfterFinished: 86400
+  executeOnStartUp: true
+
+runMode: "job"
+
+serviceAccount:
+  create: true
+  name: ""
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

@@ -1,0 +1,58 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "doctorlib-navigator.fullname" . }}
+  labels:
+    {{- include "doctorlib-navigator.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.job.schedule | quote }}
+  {{- with .Values.job.timeZone }}
+  timeZone: {{ . | quote }}
+  {{- end }}
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: {{ .Values.job.ttlSecondsAfterFinished }}
+      template:
+        metadata:
+          labels:
+            {{- include "doctorlib-navigator.selectorLabels" . | nindent 12 }}
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: {{ include "doctorlib-navigator.serviceAccountName" . }}
+          securityContext:
+            {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          containers:
+            - name: {{ .Chart.Name }}
+              image: "{{ .Values.image.repository }}:{{ include "doctorlib-navigator.imageTag" . }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              env:
+                - name: CONFIG_PATH
+                  value: /run/config/config.yaml
+                - name: RUN_MODE
+                  value: {{ .Values.runMode | quote }}
+              securityContext:
+                {{- toYaml .Values.securityContext | nindent 16 }}
+              resources:
+                {{- toYaml .Values.resources | nindent 16 }}
+              volumeMounts:
+                - name: config
+                  mountPath: /run/config
+                  readOnly: true
+          volumes:
+            - name: config
+              configMap:
+                name: {{ include "doctorlib-navigator.fullname" . }}-config
+          {{- with .Values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.affinity }}
+          affinity:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}

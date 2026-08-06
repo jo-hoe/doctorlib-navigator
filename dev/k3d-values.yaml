@@ -1,0 +1,25 @@
+image:
+  repository: registry.localhost:5000/doctorlib-navigator
+  tag: "dev"
+  pullPolicy: Always
+
+config:
+  doctors:
+    - name: "MVZ Dr. Hasert – Lichtenberg"
+      profile_slug: "mvz-dr-hasert-gmbh-standort-lichtenberg"
+      insurance: "public"
+      booking_steps:
+        - label: "visit_motive"
+          value: "Erstuntersuchung / Folgeuntersuchung"
+  notification:
+    email:
+      smtp_host: "smtp.example.com"
+      smtp_port: 587
+      username: "test"
+      password: "test"
+      from_address: "noreply@example.com"
+      to_addresses:
+        - "you@example.com"
+      use_tls: true
+  check_interval_seconds: 60
+  availability_limit: 5

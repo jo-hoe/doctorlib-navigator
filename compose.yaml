@@ -1,0 +1,9 @@
+services:
+  app:
+    build: .
+    environment:
+      - CONFIG_PATH=/run/config/config.yaml
+      - RUN_MODE=daemon
+    volumes:
+      - ./dev/config.yaml:/run/config/config.yaml:ro
+    restart: unless-stopped

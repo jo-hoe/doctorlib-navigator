@@ -1,0 +1,11 @@
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: doctorlib-navigator
+servers: 1
+agents: 0
+registries:
+  create:
+    name: registry.localhost
+    host: "0.0.0.0"
+    hostPort: "5000"
