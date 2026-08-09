@@ -11,7 +11,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
     steps:
       - uses: actions/checkout@v4
@@ -33,3 +33,13 @@ jobs:
         run: |
           helm package charts/doctorlib-navigator
           helm push doctorlib-navigator-*.tgz oci://ghcr.io/${{ github.repository_owner }}
+
+      - name: Update chart version badge in README
+        run: |
+          VERSION=$(grep '^version:' charts/doctorlib-navigator/Chart.yaml | awk '{print $2}')
+          sed -i "s|img.shields.io/badge/chart-[^-]*-blue|img.shields.io/badge/chart-${VERSION}-blue|" README.md
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          git add README.md charts/doctorlib-navigator/README.md
+          git diff --staged --quiet || git commit -m "docs: update chart badge and helm docs to ${VERSION} [skip ci]"
+          git push
