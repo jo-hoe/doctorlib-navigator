@@ -4,6 +4,7 @@ from datetime import date
 from typing import Optional
 
 import httpx
+import ua_generator
 
 from app.doctolib.models import (
     Agenda,
@@ -19,15 +20,6 @@ from app.doctolib.models import (
 logger = logging.getLogger(__name__)
 
 _BASE_URL = "https://www.doctolib.de"
-_DEFAULT_HEADERS = {
-    "Accept": "application/json",
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/150.0.0.0 Safari/537.36"
-    ),
-    "Referer": _BASE_URL + "/",
-}
 
 _KEY_VISIT_MOTIVE_IDS = "visit_motive_ids"
 _KEY_PRACTICE_IDS = "practice_ids"
@@ -80,7 +72,18 @@ class DoctolibClient:
 
 
 def create_client(timeout: float = 30.0) -> DoctolibClient:
-    http = httpx.Client(headers=_DEFAULT_HEADERS, timeout=timeout, follow_redirects=True)
+    ua = ua_generator.generate(
+        device="desktop",
+        browser=("chrome", "firefox"),
+        platform=("windows", "macos", "linux"),
+    )
+    headers = {
+        **ua.headers.get(),
+        "Accept": "application/json",
+        "Referer": _BASE_URL + "/",
+    }
+    logger.debug("Using User-Agent: %s", ua.text)
+    http = httpx.Client(headers=headers, timeout=timeout, follow_redirects=True)
     return DoctolibClient(http)
 
 
