@@ -16,8 +16,10 @@ jobs:
         id: metadata
         uses: dependabot/fetch-metadata@v3
 
-      - name: Enable auto-merge (merges only after required checks pass)
-        run: gh pr merge --auto --merge "$PR_URL"
+      - name: Wait for tests to pass then merge
+        run: |
+          gh pr checks "$PR_URL" --watch --fail-fast
+          gh pr merge --merge "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
