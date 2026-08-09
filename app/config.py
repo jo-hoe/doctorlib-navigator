@@ -4,28 +4,32 @@ from pathlib import Path
 from typing import Literal, Optional
 
 import yaml
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from pydantic import BaseModel, EmailStr, Field, SecretStr, model_validator
+
+_ENV_SMTP_USERNAME = "SMTP_USERNAME"
+_ENV_SMTP_PASSWORD = "SMTP_PASSWORD"
+_DEFAULT_INSURANCE: Literal["public", "private"] = "public"
 
 
 class EmailConfig(BaseModel):
     smtp_host: str
     smtp_port: int = 587
     username: str = ""
-    password: str = ""
+    password: SecretStr = SecretStr("")
     from_address: EmailStr
     to_addresses: list[EmailStr]
     use_tls: bool = True
 
     @model_validator(mode="after")
     def _override_from_env(self) -> "EmailConfig":
-        if u := os.environ.get("SMTP_USERNAME"):
+        if u := os.environ.get(_ENV_SMTP_USERNAME):
             self.username = u
-        if p := os.environ.get("SMTP_PASSWORD"):
-            self.password = p
-        if not self.username or not self.password:
+        if p := os.environ.get(_ENV_SMTP_PASSWORD):
+            self.password = SecretStr(p)
+        if not self.username or not self.password.get_secret_value():
             raise ValueError(
-                "SMTP username and password must be set via config file or "
-                "SMTP_USERNAME/SMTP_PASSWORD environment variables"
+                f"SMTP username and password must be set via config file or "
+                f"{_ENV_SMTP_USERNAME}/{_ENV_SMTP_PASSWORD} environment variables"
             )
         return self
 
@@ -53,7 +57,7 @@ class DateWindow(BaseModel):
 class DoctorConfig(BaseModel):
     name: str
     profile_slug: str
-    insurance: Literal["public", "private"] = "public"
+    insurance: Literal["public", "private"] = _DEFAULT_INSURANCE
     booking_steps: list[BookingStep] = Field(default_factory=list)
     windows: list[DateWindow] = Field(default_factory=list)
 
@@ -77,8 +81,7 @@ class AppConfig(BaseModel):
         return self
 
 
-def load_config(path: str | Path) -> AppConfig:
-    config_path = Path(path)
-    with config_path.open("r", encoding="utf-8") as f:
+def load_config(path: str) -> AppConfig:
+    with Path(path).open("r", encoding="utf-8") as f:
         raw = yaml.safe_load(f)
     return AppConfig.model_validate(raw)

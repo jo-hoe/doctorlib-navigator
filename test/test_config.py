@@ -92,7 +92,7 @@ def test_email_config_env_vars_override_credentials(monkeypatch):
         }
     )
     assert config.username == "env-user"
-    assert config.password == "env-secret"
+    assert config.password.get_secret_value() == "env-secret"
 
 
 def test_email_config_file_credentials_used_when_no_env_vars(monkeypatch):
@@ -108,7 +108,7 @@ def test_email_config_file_credentials_used_when_no_env_vars(monkeypatch):
         }
     )
     assert config.username == "file-user"
-    assert config.password == "file-secret"
+    assert config.password.get_secret_value() == "file-secret"
 
 
 # --- DateWindow edge cases ---

@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import date
+import logging
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
@@ -20,6 +21,14 @@ class AvailabilityDay:
     slots: list[Slot] = field(default_factory=list)
 
 
+def _day_in_any_window(day_date: date, windows: "list[DateWindow]") -> bool:
+    return any(
+        (w.start_date is None or day_date >= w.start_date)
+        and (w.end_date is None or day_date <= w.end_date)
+        for w in windows
+    )
+
+
 @dataclass(frozen=True)
 class AvailabilityResult:
     availabilities: list[AvailabilityDay]
@@ -34,7 +43,7 @@ class AvailabilityResult:
     def with_date_filter(
         self,
         windows: "list[DateWindow]",
-        logger: "Optional[object]" = None,
+        logger: Optional[logging.Logger] = None,
     ) -> "AvailabilityResult":
         if not windows:
             return self
@@ -45,27 +54,17 @@ class AvailabilityResult:
             except ValueError:
                 kept.append(day)
                 continue
-            in_window = False
-            for w in windows:
-                after_start = w.start_date is None or day_date >= w.start_date
-                before_end = w.end_date is None or day_date <= w.end_date
-                if after_start and before_end:
-                    in_window = True
-                    break
-            if in_window:
+            if _day_in_any_window(day_date, windows):
                 kept.append(day)
             elif logger and day.slots:
-                _log = getattr(logger, "debug", None)
-                if _log:
-                    _log(
-                        "Skipping %s (%d slot(s)) — outside all configured windows",
-                        day.date,
-                        len(day.slots),
-                    )
-        total = sum(len(d.slots) for d in kept)
+                logger.debug(
+                    "Skipping %s (%d slot(s)) — outside all configured windows",
+                    day.date,
+                    len(day.slots),
+                )
         return AvailabilityResult(
             availabilities=kept,
-            total=total,
+            total=sum(len(d.slots) for d in kept),
             reason=self.reason,
             message=self.message,
         )
