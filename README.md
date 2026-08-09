@@ -5,16 +5,15 @@
 [![Release Image](https://github.com/jo-hoe/doctorlib-navigator/actions/workflows/image-release.yml/badge.svg)](https://github.com/jo-hoe/doctorlib-navigator/actions/workflows/image-release.yml)
 [![Release Chart](https://github.com/jo-hoe/doctorlib-navigator/actions/workflows/chart-release.yml/badge.svg)](https://github.com/jo-hoe/doctorlib-navigator/actions/workflows/chart-release.yml)
 [![Image version](https://ghcr.io/jo-hoe/doctorlib-navigator/badge/latest)](https://github.com/jo-hoe/doctorlib-navigator/pkgs/container/doctorlib-navigator)
-[![Helm chart version](https://img.shields.io/github/v/release/jo-hoe/doctorlib-navigator?filter=doctorlib-navigator-*&label=chart)](https://github.com/jo-hoe/doctorlib-navigator/releases)
+[![Helm chart version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fghcr.io%2Fv2%2Fjo-hoe%2Fdoctorlib-navigator%2Ftags%2Flist&query=%24.tags%5B-1%3A%5D&label=chart)](https://github.com/jo-hoe/doctorlib-navigator/pkgs/container/doctorlib-navigator)
 
 Polls the Doctolib API for available appointments and sends an email notification when slots open up. No browser automation needed — works via plain HTTP against the Doctolib JSON endpoints.
 
 ## Installation
 
 ```bash
-helm repo add doctorlib-navigator https://jo-hoe.github.io/doctorlib-navigator
-helm repo update
-helm install doctorlib-navigator doctorlib-navigator/doctorlib-navigator \
+helm install doctorlib-navigator oci://ghcr.io/jo-hoe/doctorlib-navigator \
+  --version 0.2.0 \
   --set notification.email.username=<smtp-user> \
   --set notification.email.password=<smtp-password> \
   --set config.notification.email.smtp_host=smtp.example.com \

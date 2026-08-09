@@ -11,16 +11,10 @@ jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Configure Git
-        run: |
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ github.actor }}@users.noreply.github.com"
 
       - name: Install Helm
         uses: azure/setup-helm@v4
@@ -29,13 +23,13 @@ jobs:
         run: |
           docker run --rm -v "${{ github.workspace }}:/helm-docs" jnorwood/helm-docs:latest
 
-      - name: Commit updated Helm docs
+      - name: Log in to GitHub Container Registry
         run: |
-          git add charts/doctorlib-navigator/README.md
-          git diff --staged --quiet || git commit -m "docs: regenerate helm chart README [skip ci]"
-          git push
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io \
+            --username ${{ github.actor }} \
+            --password-stdin
 
-      - name: Run chart-releaser
-        uses: helm/chart-releaser-action@v1.6.0
-        env:
-          CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Package and push chart
+        run: |
+          helm package charts/doctorlib-navigator
+          helm push doctorlib-navigator-*.tgz oci://ghcr.io/${{ github.repository_owner }}
