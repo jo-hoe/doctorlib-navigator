@@ -11,11 +11,7 @@ from app.notification.notifier import Notifier
 logger = logging.getLogger(__name__)
 
 _VISIT_MOTIVE_LABEL = "visit_motive"
-_BOOKING_URL = "https://www.doctolib.de"
 _NOTIFICATION_SLOTS_LIMIT = 10
-_WINDOW_UNRESTRICTED = "unrestricted"
-_WINDOW_START_DEFAULT = "today"
-_WINDOW_END_DEFAULT = "∞"
 
 
 @dataclass(frozen=True)
@@ -69,7 +65,7 @@ class AppointmentChecker:
             lines.append(f"  • {slot.start_date}")
         if len(slots) > _NOTIFICATION_SLOTS_LIMIT:
             lines.append(f"  … and {len(slots) - _NOTIFICATION_SLOTS_LIMIT} more")
-        lines += ["", f"Book now: {_BOOKING_URL}"]
+        lines += ["", "Book now: https://www.doctolib.de"]
         self._notifier.notify(subject=subject, body="\n".join(lines))
 
 
@@ -112,10 +108,10 @@ def _earliest_start(windows: list[DateWindow]) -> Optional[date]:
 
 def _window_description(windows: list[DateWindow]) -> str:
     if not windows:
-        return _WINDOW_UNRESTRICTED
+        return "unrestricted"
     parts = []
     for w in windows:
-        start = w.start_date.isoformat() if w.start_date else _WINDOW_START_DEFAULT
-        end = w.end_date.isoformat() if w.end_date else _WINDOW_END_DEFAULT
+        start = w.start_date.isoformat() if w.start_date else "today"
+        end = w.end_date.isoformat() if w.end_date else "∞"
         parts.append(f"[{start} – {end}]")
     return ", ".join(parts)

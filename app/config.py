@@ -8,7 +8,6 @@ from pydantic import BaseModel, EmailStr, Field, SecretStr, model_validator
 
 _ENV_SMTP_USERNAME = "SMTP_USERNAME"
 _ENV_SMTP_PASSWORD = "SMTP_PASSWORD"
-_DEFAULT_INSURANCE: Literal["public", "private"] = "public"
 
 
 class EmailConfig(BaseModel):
@@ -57,7 +56,7 @@ class DateWindow(BaseModel):
 class DoctorConfig(BaseModel):
     name: str
     profile_slug: str
-    insurance: Literal["public", "private"] = _DEFAULT_INSURANCE
+    insurance: Literal["public", "private"] = "public"
     booking_steps: list[BookingStep] = Field(default_factory=list)
     windows: list[DateWindow] = Field(default_factory=list)
 

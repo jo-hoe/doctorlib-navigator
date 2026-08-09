@@ -11,10 +11,6 @@ from app.config import AppConfig, load_config
 from app.doctolib import create_client
 from app.notification import create_notifier
 
-_LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
-_DEFAULT_CONFIG_PATH = "/run/config/config.yaml"
-_DEFAULT_RUN_MODE = "daemon"
-_DEFAULT_LOG_LEVEL = "INFO"
 _RUN_MODE_JOB = "job"
 _RUN_MODE_DAEMON = "daemon"
 
@@ -63,13 +59,13 @@ def start_with_schedule(
 
 
 def main(
-    config_path: str = os.environ.get("CONFIG_PATH", _DEFAULT_CONFIG_PATH),
-    run_mode: str = os.environ.get("RUN_MODE", _DEFAULT_RUN_MODE),
-    log_level: str = os.environ.get("LOG_LEVEL", _DEFAULT_LOG_LEVEL).upper(),
+    config_path: str = os.environ.get("CONFIG_PATH", "/run/config/config.yaml"),
+    run_mode: str = os.environ.get("RUN_MODE", "daemon"),
+    log_level: str = os.environ.get("LOG_LEVEL", "INFO").upper(),
 ) -> int:
     logging.basicConfig(
         level=getattr(logging, log_level, logging.INFO),
-        format=_LOG_FORMAT,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
     if run_mode == _RUN_MODE_JOB:
         try:
