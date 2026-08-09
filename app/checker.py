@@ -1,8 +1,9 @@
 import logging
 from dataclasses import dataclass
 from datetime import date
+from typing import Optional
 
-from app.config import DoctorConfig
+from app.config import DateWindow, DoctorConfig
 from app.doctolib.client import DoctolibClient
 from app.doctolib.models import AvailabilityResult, ProfileInfo
 from app.notification.notifier import Notifier
@@ -35,17 +36,21 @@ class AppointmentChecker:
         logger.info("Checking appointments for %s", doctor.name)
         profile = self._client.fetch_profile_info(doctor.profile_slug)
         motive_id, agenda_ids, practice_ids = _resolve_booking_params(doctor, profile)
+        api_start = _earliest_start(doctor.windows)
         result = self._client.fetch_availabilities(
             visit_motive_id=motive_id,
             agenda_ids=agenda_ids,
             practice_ids=practice_ids,
             insurance_sector=doctor.insurance,
-            start_date=date.today(),
+            start_date=api_start,
         )
+        result = result.with_date_filter(windows=doctor.windows, logger=logger)
+        window_desc = _window_description(doctor.windows)
         logger.info(
-            "%s: %d slot(s) found",
+            "%s: %d slot(s) within window(s) %s",
             doctor.name,
             result.total,
+            window_desc,
         )
         return CheckResult(doctor_name=doctor.name, has_slots=result.has_slots, result=result)
 
@@ -98,3 +103,19 @@ def _get_motive_name(doctor: DoctorConfig) -> str:
     raise ValueError(
         f"No booking step with label 'visit_motive' found for {doctor.name}"
     )
+
+
+def _earliest_start(windows: list[DateWindow]) -> Optional[date]:
+    starts = [w.start_date for w in windows if w.start_date is not None]
+    return min(starts) if starts else None
+
+
+def _window_description(windows: list[DateWindow]) -> str:
+    if not windows:
+        return "unrestricted"
+    parts = []
+    for w in windows:
+        start = w.start_date.isoformat() if w.start_date else "today"
+        end = w.end_date.isoformat() if w.end_date else "∞"
+        parts.append(f"[{start} – {end}]")
+    return ", ".join(parts)

@@ -25,6 +25,16 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@v4
 
+      - name: Generate Helm docs
+        run: |
+          docker run --rm -v "${{ github.workspace }}:/helm-docs" jnorwood/helm-docs:latest
+
+      - name: Commit updated Helm docs
+        run: |
+          git add charts/doctorlib-navigator/README.md
+          git diff --staged --quiet || git commit -m "docs: regenerate helm chart README [skip ci]"
+          git push
+
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@v1.6.0
         env:

@@ -1,8 +1,11 @@
+import logging
 from dataclasses import dataclass
 from datetime import date
 from typing import Optional
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 from app.doctolib.models import (
     Agenda,
@@ -33,8 +36,10 @@ class DoctolibClient:
 
     def fetch_profile_info(self, profile_slug: str) -> ProfileInfo:
         url = f"{_BASE_URL}/online_booking/api/slot_selection_funnel/v1/info.json"
+        logger.debug("Fetching profile info for slug=%s", profile_slug)
         response = self._http.get(url, params={"profile_slug": profile_slug, "locale": "de"})
         response.raise_for_status()
+        logger.debug("Profile info response: %d bytes", len(response.content))
         return _parse_profile_info(response.json())
 
     def fetch_availabilities(
@@ -59,9 +64,12 @@ class DoctolibClient:
             "limit": limit,
         }
         url = f"{_BASE_URL}/availabilities.json"
+        logger.debug("Fetching availabilities: motive=%d start=%s", visit_motive_id, start_date)
         response = self._http.get(url, params=params)
         response.raise_for_status()
-        return _parse_availability_result(response.json())
+        result = _parse_availability_result(response.json())
+        logger.debug("Availabilities response: total=%d", result.total)
+        return result
 
 
 def create_client(timeout: float = 30.0) -> DoctolibClient:

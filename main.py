@@ -9,14 +9,15 @@ from app.config import load_config
 from app.doctolib import create_client
 from app.notification import create_notifier
 
+CONFIG_PATH = os.environ.get("CONFIG_PATH", "/run/config/config.yaml")
+RUN_MODE = os.environ.get("RUN_MODE", "daemon")
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
+
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, LOG_LEVEL, logging.INFO),
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
-
-CONFIG_PATH = os.environ.get("CONFIG_PATH", "/run/config/config.yaml")
-RUN_MODE = os.environ.get("RUN_MODE", "daemon")
 
 _running = True
 

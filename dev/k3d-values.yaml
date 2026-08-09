@@ -1,7 +1,5 @@
-image:
-  repository: registry.localhost:5000/doctorlib-navigator
-  tag: "dev"
-  pullPolicy: Always
+# Override values for local k3d development
+logLevel: "DEBUG"
 
 config:
   doctors:
@@ -11,15 +9,24 @@ config:
       booking_steps:
         - label: "visit_motive"
           value: "Erstuntersuchung / Folgeuntersuchung"
+      windows:
+        - end_date: "2026-08-28"
   notification:
     email:
       smtp_host: "smtp.example.com"
       smtp_port: 587
-      username: "test"
-      password: "test"
       from_address: "noreply@example.com"
       to_addresses:
         - "you@example.com"
       use_tls: true
-  check_interval_seconds: 60
+  check_interval_seconds: 300
   availability_limit: 5
+
+notification:
+  email:
+    username: "your-smtp-username"
+    password: "your-smtp-password"
+
+job:
+  schedule: "*/5 * * * *"
+  timeZone: "Europe/Berlin"

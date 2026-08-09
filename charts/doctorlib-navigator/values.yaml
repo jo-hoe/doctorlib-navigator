@@ -1,32 +1,58 @@
 image:
+  # -- Image repository for the doctorlib-navigator container
   repository: ghcr.io/jo-hoe/doctorlib-navigator
+  # -- Image pull policy
   pullPolicy: IfNotPresent
+  # -- Overrides the image tag (defaults to chart appVersion)
   tag: ""
 
-# -- Configuration passed as config.yaml to the application
+# -- SMTP credentials rendered into a Kubernetes Secret
+notification:
+  email:
+    # -- SMTP username injected as SMTP_USERNAME env var; overrides the config file value
+    username: ""
+    # -- SMTP password injected as SMTP_PASSWORD env var; overrides the config file value
+    password: ""
+
+# -- Application configuration mounted as config.yaml; see dev/config.yaml for a full example
 config:
+  # -- List of Doctolib doctor profiles to monitor. Each entry requires: name (human-readable label), profile_slug (last URL path segment on doctolib.de), insurance ("public" or "private"), booking_steps (list of {label, value} pairs — use label "visit_motive" with the appointment type value). Optionally add windows (list of {start_date, end_date} ISO date ranges) to restrict which appointments trigger a notification; a slot matches if it falls in ANY window.
   doctors: []
+  # -- Notification channel config (non-sensitive fields only; credentials go in notification.email above)
   notification: {}
+  # -- Seconds between availability checks when runMode is daemon
   check_interval_seconds: 300
+  # -- Maximum number of available slots to include in the notification
   availability_limit: 5
 
 job:
-  # -- Cron schedule for the CronJob (daemon mode uses check_interval_seconds instead)
+  # -- Cron schedule for the CronJob (only used when runMode is job)
   schedule: "*/5 * * * *"
+  # -- Timezone for the cron schedule
   timeZone: "Europe/Berlin"
+  # -- Seconds to keep finished Job pods before deletion
   ttlSecondsAfterFinished: 86400
+  # -- Create an initial Job immediately on Helm install
   executeOnStartUp: true
 
+# -- Run mode: "job" runs once per cron trigger; "daemon" loops using check_interval_seconds
 runMode: "job"
 
+# -- Log level for the application: DEBUG, INFO, WARNING, ERROR
+logLevel: "INFO"
+
 serviceAccount:
+  # -- Create a dedicated ServiceAccount for the workload
   create: true
+  # -- Override the ServiceAccount name (defaults to the release fullname)
   name: ""
 
+# -- Pod-level security context
 podSecurityContext:
   runAsNonRoot: true
   runAsUser: 10001
 
+# -- Container-level security context
 securityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
@@ -34,6 +60,7 @@ securityContext:
     drop:
       - ALL
 
+# -- CPU and memory resource requests and limits
 resources:
   limits:
     cpu: 200m
@@ -42,6 +69,9 @@ resources:
     cpu: 50m
     memory: 64Mi
 
+# -- Node selector for pod scheduling
 nodeSelector: {}
+# -- Tolerations for pod scheduling
 tolerations: []
+# -- Affinity rules for pod scheduling
 affinity: {}

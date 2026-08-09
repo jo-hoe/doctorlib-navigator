@@ -1,5 +1,9 @@
 import pytest
 
+from datetime import date
+from unittest.mock import MagicMock
+
+from app.config import DateWindow
 from app.doctolib.models import (
     AgendaConfiguration,
     Agenda,
@@ -10,6 +14,22 @@ from app.doctolib.models import (
     Slot,
     VisitMotive,
 )
+
+
+def _make_result(days: list[tuple[str, int]]) -> AvailabilityResult:
+    """Build a result with (date_str, slot_count) pairs."""
+    availabilities = [
+        AvailabilityDay(
+            date=d,
+            slots=[
+                Slot(start_date=f"{d}T09:00:00+02:00", end_date=f"{d}T09:20:00+02:00", agenda_id=1, practice_id=1)
+                for _ in range(n)
+            ],
+        )
+        for d, n in days
+    ]
+    total = sum(n for _, n in days)
+    return AvailabilityResult(availabilities=availabilities, total=total, reason=None, message=None)
 
 
 def _make_config(insurance: str, agenda_id: int, disabled: bool = False, status: str = "enabled_for_all") -> AgendaConfiguration:
@@ -91,3 +111,48 @@ def test_availability_result_has_slots_false():
         message="Keine Termine online verfügbar",
     )
     assert result.has_slots is False
+
+
+def test_with_date_filter_no_windows_returns_self():
+    result = _make_result([("2026-08-10", 2)])
+    assert result.with_date_filter([]) is result
+
+
+def test_with_date_filter_end_date_excludes_later_days():
+    result = _make_result([("2026-08-10", 1), ("2026-08-29", 1)])
+    filtered = result.with_date_filter([DateWindow(end_date=date(2026, 8, 28))])
+    assert filtered.total == 1
+    assert filtered.availabilities[0].date == "2026-08-10"
+
+
+def test_with_date_filter_start_date_excludes_earlier_days():
+    result = _make_result([("2026-08-10", 1), ("2026-08-20", 1)])
+    filtered = result.with_date_filter([DateWindow(start_date=date(2026, 8, 15))])
+    assert filtered.total == 1
+    assert filtered.availabilities[0].date == "2026-08-20"
+
+
+def test_with_date_filter_multiple_windows():
+    result = _make_result([("2026-08-10", 1), ("2026-09-15", 1), ("2026-11-03", 1)])
+    windows = [
+        DateWindow(end_date=date(2026, 8, 31)),
+        DateWindow(start_date=date(2026, 11, 1), end_date=date(2026, 11, 7)),
+    ]
+    filtered = result.with_date_filter(windows)
+    assert filtered.total == 2
+    dates = [d.date for d in filtered.availabilities]
+    assert "2026-08-10" in dates
+    assert "2026-11-03" in dates
+    assert "2026-09-15" not in dates
+
+
+def test_with_date_filter_logs_skipped_days():
+    result = _make_result([("2026-08-10", 1), ("2026-09-01", 2)])
+    mock_logger = MagicMock()
+    filtered = result.with_date_filter([DateWindow(end_date=date(2026, 8, 28))], logger=mock_logger)
+    assert filtered.total == 1
+    mock_logger.debug.assert_called_once()
+    call_args = mock_logger.debug.call_args[0]
+    assert "2026-09-01" in call_args[1]
+    assert 2 == call_args[2]
+

@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, call
 import pytest
 
 from app.checker import AppointmentChecker, CheckResult, _get_motive_name, _resolve_booking_params
-from app.config import BookingStep, DoctorConfig
+from app.config import BookingStep, DateWindow, DoctorConfig
 from app.doctolib.client import DoctolibClient
 from app.doctolib.models import (
     AgendaConfiguration,

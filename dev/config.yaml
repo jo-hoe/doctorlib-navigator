@@ -5,6 +5,8 @@ doctors:
     booking_steps:
       - label: "visit_motive"
         value: "Erstuntersuchung / Folgeuntersuchung"
+    windows:
+      - end_date: "2026-08-28"
 
 notification:
   email:

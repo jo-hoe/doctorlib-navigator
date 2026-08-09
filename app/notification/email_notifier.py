@@ -1,9 +1,12 @@
+import logging
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 from app.config import EmailConfig
 from app.notification.notifier import Notifier
+
+logger = logging.getLogger(__name__)
 
 
 class EmailNotifier(Notifier):
@@ -25,6 +28,7 @@ def _build_message(config: EmailConfig, subject: str, body: str) -> MIMEMultipar
 
 
 def _send(config: EmailConfig, message: MIMEMultipart) -> None:
+    logger.debug("Connecting to SMTP %s:%d (tls=%s)", config.smtp_host, config.smtp_port, config.use_tls)
     with smtplib.SMTP(config.smtp_host, config.smtp_port) as server:
         if config.use_tls:
             server.starttls()
@@ -34,3 +38,4 @@ def _send(config: EmailConfig, message: MIMEMultipart) -> None:
             config.to_addresses,
             message.as_string(),
         )
+    logger.info("Email sent to %s", config.to_addresses)

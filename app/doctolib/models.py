@@ -1,5 +1,9 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from datetime import date
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from app.config import DateWindow
 
 
 @dataclass(frozen=True)
@@ -26,6 +30,45 @@ class AvailabilityResult:
     @property
     def has_slots(self) -> bool:
         return self.total > 0
+
+    def with_date_filter(
+        self,
+        windows: "list[DateWindow]",
+        logger: "Optional[object]" = None,
+    ) -> "AvailabilityResult":
+        if not windows:
+            return self
+        kept: list[AvailabilityDay] = []
+        for day in self.availabilities:
+            try:
+                day_date = date.fromisoformat(day.date[:10])
+            except ValueError:
+                kept.append(day)
+                continue
+            in_window = False
+            for w in windows:
+                after_start = w.start_date is None or day_date >= w.start_date
+                before_end = w.end_date is None or day_date <= w.end_date
+                if after_start and before_end:
+                    in_window = True
+                    break
+            if in_window:
+                kept.append(day)
+            elif logger and day.slots:
+                _log = getattr(logger, "debug", None)
+                if _log:
+                    _log(
+                        "Skipping %s (%d slot(s)) — outside all configured windows",
+                        day.date,
+                        len(day.slots),
+                    )
+        total = sum(len(d.slots) for d in kept)
+        return AvailabilityResult(
+            availabilities=kept,
+            total=total,
+            reason=self.reason,
+            message=self.message,
+        )
 
 
 @dataclass(frozen=True)

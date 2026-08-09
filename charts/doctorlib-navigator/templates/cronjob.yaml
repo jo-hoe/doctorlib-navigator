@@ -32,6 +32,20 @@ spec:
                   value: /run/config/config.yaml
                 - name: RUN_MODE
                   value: {{ .Values.runMode | quote }}
+                - name: LOG_LEVEL
+                  value: {{ .Values.logLevel | quote }}
+                {{- if .Values.notification.email.username }}
+                - name: SMTP_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "doctorlib-navigator.fullname" . }}-smtp
+                      key: smtp-username
+                - name: SMTP_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "doctorlib-navigator.fullname" . }}-smtp
+                      key: smtp-password
+                {{- end }}
               securityContext:
                 {{- toYaml .Values.securityContext | nindent 16 }}
               resources:
