@@ -5,7 +5,7 @@
 [![Release Image](https://github.com/jo-hoe/doctorlib-navigator/actions/workflows/image-release.yml/badge.svg)](https://github.com/jo-hoe/doctorlib-navigator/actions/workflows/image-release.yml)
 [![Release Chart](https://github.com/jo-hoe/doctorlib-navigator/actions/workflows/chart-release.yml/badge.svg)](https://github.com/jo-hoe/doctorlib-navigator/actions/workflows/chart-release.yml)
 [![Image version](https://img.shields.io/github/v/tag/jo-hoe/doctorlib-navigator?label=image)](https://github.com/jo-hoe/doctorlib-navigator/pkgs/container/doctorlib-navigator)
-[![Helm chart version](https://img.shields.io/badge/chart-0.2.0-blue)](https://github.com/jo-hoe/doctorlib-navigator/pkgs/container/doctorlib-navigator)
+[![Helm chart version](https://img.shields.io/badge/chart-0.3.0-blue)](https://github.com/jo-hoe/doctorlib-navigator/pkgs/container/doctorlib-navigator)
 
 Polls the Doctolib API for available appointments and sends an email notification when slots open up. No browser automation needed — works via plain HTTP against the Doctolib JSON endpoints.
 
