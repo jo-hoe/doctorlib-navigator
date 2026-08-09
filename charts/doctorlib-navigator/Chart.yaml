@@ -4,3 +4,4 @@ description: A Helm chart for the Doctolib appointment availability notifier
 type: application
 version: 0.2.0
 appVersion: "0.2.0"
+
