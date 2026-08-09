@@ -31,15 +31,15 @@ appVersion: "<new-version>"
 ```bash
 git add charts/doctorlib-navigator/Chart.yaml
 git commit -m "chore: bump chart and appVersion to <new-version>"
-git push origin master
+git push origin main
 git tag v<new-version>
 git push origin v<new-version>
 ```
 
 Pushing both simultaneously triggers:
 - `image-release.yml` — fires on the semver tag, builds and pushes image to ghcr.io
-- `chart-release.yml` — fires on Chart.yaml change on master, runs helm-docs, pushes OCI chart
-- `test.yml` — fires on master push
+- `chart-release.yml` — fires on Chart.yaml change on main, runs helm-docs, pushes OCI chart
+- `test.yml` — fires on main push
 
 ### Step 4 — Babysit CI
 

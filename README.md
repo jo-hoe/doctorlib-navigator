@@ -1,7 +1,7 @@
 # doctorlib-navigator
 
 [![Test](https://github.com/jo-hoe/doctorlib-navigator/actions/workflows/test.yml/badge.svg)](https://github.com/jo-hoe/doctorlib-navigator/actions/workflows/test.yml)
-[![Coverage](https://coveralls.io/repos/github/jo-hoe/doctorlib-navigator/badge.svg?branch=master)](https://coveralls.io/github/jo-hoe/doctorlib-navigator?branch=master)
+[![Coverage](https://coveralls.io/repos/github/jo-hoe/doctorlib-navigator/badge.svg?branch=main)](https://coveralls.io/github/jo-hoe/doctorlib-navigator?branch=main)
 [![Release Image](https://github.com/jo-hoe/doctorlib-navigator/actions/workflows/image-release.yml/badge.svg)](https://github.com/jo-hoe/doctorlib-navigator/actions/workflows/image-release.yml)
 [![Release Chart](https://github.com/jo-hoe/doctorlib-navigator/actions/workflows/chart-release.yml/badge.svg)](https://github.com/jo-hoe/doctorlib-navigator/actions/workflows/chart-release.yml)
 [![Image version](https://img.shields.io/github/v/tag/jo-hoe/doctorlib-navigator?label=image)](https://github.com/jo-hoe/doctorlib-navigator/pkgs/container/doctorlib-navigator)
