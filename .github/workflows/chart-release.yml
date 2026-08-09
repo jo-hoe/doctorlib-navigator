@@ -3,7 +3,7 @@ name: Release Chart
 on:
   push:
     branches:
-      - main
+      - master
     paths:
       - "charts/doctorlib-navigator/Chart.yaml"
 
