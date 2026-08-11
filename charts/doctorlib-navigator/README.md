@@ -1,6 +1,6 @@
 # doctorlib-navigator
 
-![Version: 0.3.0](https://img.shields.io/badge/Version-0.3.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.3.0](https://img.shields.io/badge/AppVersion-0.3.0-informational?style=flat-square)
+![Version: 0.4.0](https://img.shields.io/badge/Version-0.4.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.4.0](https://img.shields.io/badge/AppVersion-0.4.0-informational?style=flat-square)
 
 A Helm chart for the Doctolib appointment availability notifier
 
@@ -12,7 +12,7 @@ A Helm chart for the Doctolib appointment availability notifier
 | config | object | `{"availability_limit":5,"check_interval_seconds":300,"doctors":[],"notification":{}}` | Application configuration mounted as config.yaml; see dev/config.yaml for a full example |
 | config.availability_limit | int | `5` | Maximum number of available slots to include in the notification |
 | config.check_interval_seconds | int | `300` | Seconds between availability checks when runMode is daemon |
-| config.doctors | list | `[]` | List of Doctolib doctor profiles to monitor. Each entry requires: name (human-readable label), profile_slug (last URL path segment on doctolib.de), insurance ("public" or "private"), booking_steps (list of {label, value} pairs — use label "visit_motive" with the appointment type value). Optionally add windows (list of {start_date, end_date} ISO date ranges) to restrict which appointments trigger a notification; a slot matches if it falls in ANY window. |
+| config.doctors | list | `[]` | - end_date: "2026-12-31" |
 | config.notification | object | `{}` | Notification channel config (non-sensitive fields only; credentials go in notification.email above) |
 | image.pullPolicy | string | `"IfNotPresent"` | Image pull policy |
 | image.repository | string | `"ghcr.io/jo-hoe/doctorlib-navigator"` | Image repository for the doctorlib-navigator container |
@@ -32,6 +32,9 @@ A Helm chart for the Doctolib appointment availability notifier
 | securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":true}` | Container-level security context |
 | serviceAccount.create | bool | `true` | Create a dedicated ServiceAccount for the workload |
 | serviceAccount.name | string | `""` | Override the ServiceAccount name (defaults to the release fullname) |
+| state | object | `{"storageClassName":"","storageSize":"10Mi"}` | Persistent storage for deduplication state (prevents re-sending notifications across runs) |
+| state.storageClassName | string | `""` | StorageClassName for the state PVC; leave empty to use the cluster default |
+| state.storageSize | string | `"10Mi"` | Storage size for the state PVC |
 | tolerations | list | `[]` | Tolerations for pod scheduling |
 
 ----------------------------------------------
