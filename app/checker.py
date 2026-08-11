@@ -3,8 +3,10 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Optional
 
+import httpx
+
 from app.config import DateWindow, DoctorConfig
-from app.doctolib.client import DoctolibClient
+from app.doctolib.client import DoctolibAPIError, DoctolibClient
 from app.doctolib.models import AvailabilityResult, ProfileInfo
 from app.notification.notifier import Notifier
 from app.state.store import InMemoryStateStore, StateStore, sanitise_key
@@ -35,11 +37,31 @@ class AppointmentChecker:
 
     def check_all(self, doctors: list[DoctorConfig]) -> list[CheckResult]:
         results = []
+        failures = 0
         for doctor in doctors:
-            result = self._check_doctor(doctor)
+            try:
+                result = self._check_doctor(doctor)
+            except (httpx.HTTPStatusError, httpx.RequestError, DoctolibAPIError, ValueError) as exc:
+                failures += 1
+                self._log_check_failure(doctor, exc)
+                continue
             results.append(result)
             self._notify_if_changed(doctor, result)
+        if doctors and failures == len(doctors):
+            raise RuntimeError(
+                f"All {failures} doctor check(s) failed; see logs for details"
+            )
         return results
+
+    def _log_check_failure(self, doctor: DoctorConfig, exc: Exception) -> None:
+        if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code == 410:
+            logger.warning(
+                "%s: profile not found (HTTP 410) — check profile_slug '%s'",
+                doctor.name,
+                doctor.profile_slug,
+            )
+        else:
+            logger.warning("%s: check failed — %s", doctor.name, exc)
 
     def _notify_if_changed(self, doctor: DoctorConfig, result: CheckResult) -> None:
         key = sanitise_key(doctor.name)
@@ -102,6 +124,10 @@ def _resolve_booking_params(
         )
 
     agenda_ids = motive.agenda_ids_for_insurance(doctor.insurance)
+    if not agenda_ids:
+        # Profiles without per-motive insurance configurations expose the
+        # motive→agenda mapping on the agendas list instead.
+        agenda_ids = profile.agenda_ids_for_motive(motive.id)
     if not agenda_ids:
         raise ValueError(
             f"No enabled agendas for motive '{motive_name}' "

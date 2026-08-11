@@ -27,7 +27,11 @@ logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(mes
 def discover_profile(client: DoctolibClient, profile_slug: str) -> None:
     profile = client.fetch_profile_info(profile_slug)
 
-    bookable = [m for m in profile.visit_motives if m.available_insurances()]
+    bookable = [
+        m
+        for m in profile.visit_motives
+        if m.available_insurances() or profile.agenda_ids_for_motive(m.id)
+    ]
     if not bookable:
         print(f"No bookable appointment types found for profile '{profile_slug}'.")
         return
@@ -50,8 +54,6 @@ def discover_profile(client: DoctolibClient, profile_slug: str) -> None:
     print(f"{_INDENT}      profile_slug: \"{profile_slug}\"")
     if len(insurances) == 1:
         print(f"{_INDENT}      insurance: \"{insurances[0]}\"")
-    else:
-        print(f"{_INDENT}      insurance: \"<{' or '.join(insurances)}>\"")
     print(f"{_INDENT}      booking_steps:")
     print(f"{_INDENT}        - label: \"visit_motive\"")
     print(f"{_INDENT}          value: \"{first.name}\"")

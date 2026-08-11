@@ -10,9 +10,9 @@ if TYPE_CHECKING:
 @dataclass(frozen=True)
 class Slot:
     start_date: str
-    end_date: str
-    agenda_id: int
-    practice_id: int
+    end_date: Optional[str] = None
+    agenda_id: Optional[int] = None
+    practice_id: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -130,6 +130,9 @@ class ProfileInfo:
             if motive.name.lower() == name_lower:
                 return motive
         return None
+
+    def agenda_ids_for_motive(self, motive_id: int) -> list[int]:
+        return [a.id for a in self.agendas if motive_id in a.visit_motive_ids]
 
     def practice_ids(self) -> list[int]:
         return [pid for place in self.places for pid in place.practice_ids]

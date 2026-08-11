@@ -1,4 +1,4 @@
-from app.doctolib.client import DoctolibClient, create_client
+from app.doctolib.client import DoctolibAPIError, DoctolibClient, create_client
 from app.doctolib.models import (
     Agenda,
     AgendaConfiguration,
@@ -11,6 +11,7 @@ from app.doctolib.models import (
 )
 
 __all__ = [
+    "DoctolibAPIError",
     "DoctolibClient",
     "create_client",
     "Agenda",

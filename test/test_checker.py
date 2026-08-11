@@ -1,11 +1,13 @@
 from unittest.mock import MagicMock, call
 
+import httpx
 import pytest
 
 from app.checker import AppointmentChecker, CheckResult, _get_motive_name, _resolve_booking_params
 from app.config import BookingStep, DateWindow, DoctorConfig
-from app.doctolib.client import DoctolibClient
+from app.doctolib.client import DoctolibAPIError, DoctolibClient
 from app.doctolib.models import (
+    Agenda,
     AgendaConfiguration,
     AvailabilityDay,
     AvailabilityResult,
@@ -129,6 +131,22 @@ def test_resolve_booking_params_no_enabled_agendas_raises():
         _resolve_booking_params(doctor, profile)
 
 
+def test_resolve_booking_params_falls_back_to_agendas_list():
+    # Real profiles (e.g. alexander-spies) expose motives with null configurations;
+    # the motive→agenda mapping lives on the agendas list instead.
+    motive = VisitMotive(id=1271364, name="Akupunktur", configurations=[])
+    agenda = Agenda(id=208211, practice_id=82596, visit_motive_ids=[1271364])
+    place = Place(id="practice-82596", name="Praxis", practice_ids=[82596])
+    profile = ProfileInfo(visit_motives=[motive], agendas=[agenda], places=[place])
+    doctor = _make_doctor(motive="Akupunktur")
+
+    motive_id, agenda_ids, practice_ids = _resolve_booking_params(doctor, profile)
+
+    assert motive_id == 1271364
+    assert agenda_ids == [208211]
+    assert practice_ids == [82596]
+
+
 def test_get_motive_name_raises_when_missing():
     doctor = DoctorConfig(
         name="X",
@@ -142,3 +160,46 @@ def test_get_motive_name_raises_when_missing():
 def test_get_motive_name_returns_value():
     doctor = _make_doctor(motive="Erstuntersuchung / Folgeuntersuchung")
     assert _get_motive_name(doctor) == "Erstuntersuchung / Folgeuntersuchung"
+
+
+def test_check_all_skips_failed_doctor_and_keeps_success():
+    profile = _make_profile()
+    client = MagicMock(spec=DoctolibClient)
+    client.fetch_profile_info.return_value = profile
+    request = httpx.Request("GET", "https://www.doctolib.de/availabilities.json")
+    client.fetch_availabilities.side_effect = [
+        httpx.HTTPStatusError("410", request=request, response=httpx.Response(410, request=request)),
+        _make_result_with_slots(),
+    ]
+    notifier = MagicMock(spec=Notifier)
+    checker = AppointmentChecker(client=client, notifier=notifier)
+
+    results = checker.check_all([_make_doctor(name="Doc A"), _make_doctor(name="Doc B")])
+
+    assert len(results) == 1
+    assert results[0].doctor_name == "Doc B"
+    notifier.notify.assert_called_once()
+
+
+def test_check_all_raises_when_all_doctors_fail():
+    client = MagicMock(spec=DoctolibClient)
+    client.fetch_profile_info.side_effect = DoctolibAPIError("profile_not_found")
+    notifier = MagicMock(spec=Notifier)
+    checker = AppointmentChecker(client=client, notifier=notifier)
+
+    with pytest.raises(RuntimeError, match="All 2 doctor check"):
+        checker.check_all([_make_doctor(name="Doc A"), _make_doctor(name="Doc B")])
+    notifier.notify.assert_not_called()
+
+
+def test_check_all_does_not_notify_failed_doctor():
+    client = MagicMock(spec=DoctolibClient)
+    client.fetch_profile_info.side_effect = [DoctolibAPIError("boom"), _make_profile()]
+    client.fetch_availabilities.return_value = _make_result_with_slots()
+    notifier = MagicMock(spec=Notifier)
+    checker = AppointmentChecker(client=client, notifier=notifier)
+
+    results = checker.check_all([_make_doctor(name="Doc A"), _make_doctor(name="Doc B")])
+
+    assert len(results) == 1
+    notifier.notify.assert_called_once()
