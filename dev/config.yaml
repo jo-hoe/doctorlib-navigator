@@ -1,12 +1,12 @@
 doctors:
-  - name: "MVZ Dr. Hasert – Lichtenberg"
-    profile_slug: "mvz-dr-hasert-gmbh-standort-lichtenberg"
+  - name: "Dr. Example"
+    profile_slug: "dr-example-berlin"
     insurance: "public"
     booking_steps:
       - label: "visit_motive"
         value: "Erstuntersuchung / Folgeuntersuchung"
     windows:
-      - end_date: "2026-08-28"
+      - end_date: "2026-12-31"
 
 notification:
   email:

@@ -5,7 +5,7 @@ Usage:
     python discover.py <profile_slug>
 
 Example:
-    python discover.py mvz-dr-hasert-gmbh-standort-lichtenberg
+    python discover.py dr-example-berlin
 
 The profile_slug is the last path segment of the doctor's Doctolib URL:
     https://www.doctolib.de/allgemeinmedizin/berlin/max-mustermann
