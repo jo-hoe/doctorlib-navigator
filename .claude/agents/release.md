@@ -86,4 +86,4 @@ Report: `[Step 5/5] ✓ Release complete`
 
 Confirm:
 - Image: `ghcr.io/jo-hoe/doctorlib-navigator:v<new-version>`
-- Chart: `oci://ghcr.io/jo-hoe/doctorlib-navigator --version <new-version>`
+- Chart: `oci://ghcr.io/jo-hoe/charts/doctorlib-navigator --version <new-version>`
