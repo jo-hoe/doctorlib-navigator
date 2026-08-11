@@ -19,8 +19,6 @@ config:
       to_addresses:
         - "you@example.com"
       use_tls: true
-  check_interval_seconds: 300
-  availability_limit: 5
 
 notification:
   email:

@@ -36,7 +36,7 @@ config:
   # --                  A slot triggers a notification if it falls in ANY window.
   # --                  Omit entirely for no date restriction.
   # --
-  # -- Example (values discovered via RUN_MODE=discover):
+  # -- Example:
   # --   doctors:
   # --     - name: "Dr. Example"
   # --       profile_slug: "dr-example-berlin"
@@ -49,13 +49,9 @@ config:
   doctors: []
   # -- Notification channel config (non-sensitive fields only; credentials go in notification.email above)
   notification: {}
-  # -- Seconds between availability checks when runMode is daemon
-  check_interval_seconds: 300
-  # -- Maximum number of available slots to include in the notification
-  availability_limit: 5
 
 job:
-  # -- Cron schedule for the CronJob (only used when runMode is job)
+  # -- Cron schedule for the CronJob
   schedule: "*/5 * * * *"
   # -- Timezone for the cron schedule
   timeZone: "Europe/Berlin"
@@ -63,9 +59,6 @@ job:
   ttlSecondsAfterFinished: 86400
   # -- Create an initial Job immediately on Helm install
   executeOnStartUp: true
-
-# -- Run mode: "job" runs once per cron trigger; "daemon" loops using check_interval_seconds
-runMode: "job"
 
 # -- Log level for the application: DEBUG, INFO, WARNING, ERROR
 logLevel: "INFO"

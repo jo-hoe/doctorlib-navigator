@@ -70,8 +70,6 @@ class DoctorConfig(BaseModel):
 class AppConfig(BaseModel):
     doctors: list[DoctorConfig]
     notification: NotificationConfig
-    check_interval_seconds: int = 300
-    availability_limit: int = 5
 
     @model_validator(mode="after")
     def require_at_least_one_doctor(self) -> "AppConfig":

@@ -35,7 +35,6 @@ def test_valid_config_parses():
     )
     assert len(config.doctors) == 1
     assert config.doctors[0].insurance == "public"
-    assert config.check_interval_seconds == 300
 
 
 def test_doctor_requires_booking_steps():
@@ -57,8 +56,7 @@ def test_defaults():
     config = AppConfig.model_validate(
         {"doctors": [_make_doctor()], "notification": _make_notification()}
     )
-    assert config.availability_limit == 5
-    assert config.check_interval_seconds == 300
+    assert len(config.doctors) == 1
 
 
 def test_email_config_invalid_address():
