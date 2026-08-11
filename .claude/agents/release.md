@@ -1,6 +1,6 @@
 ---
 name: release
-description: Release a new version of doctorlib-navigator. Bumps Chart.yaml version+appVersion, pushes a semver tag to trigger image-release, then babysits image-release, chart-release, and test CI until all complete.
+description: Release a new version of doctorlib-navigator. Bumps Chart.yaml version+appVersion, pushes a semver tag to trigger image-release, then babysits image-release, chart-release, and test CI until all complete. Run in foreground (run_in_background: false) so step progress is visible in real time.
 ---
 
 ## Release process for doctorlib-navigator
