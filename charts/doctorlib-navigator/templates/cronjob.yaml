@@ -35,16 +35,8 @@ spec:
                 - name: STATE_FILE_PATH
                   value: /run/state/state.json
                 {{- if .Values.notification.email.username }}
-                - name: SMTP_USERNAME
-                  valueFrom:
-                    secretKeyRef:
-                      name: {{ include "doctorlib-navigator.fullname" . }}-smtp
-                      key: smtp-username
-                - name: SMTP_PASSWORD
-                  valueFrom:
-                    secretKeyRef:
-                      name: {{ include "doctorlib-navigator.fullname" . }}-smtp
-                      key: smtp-password
+                - name: SMTP_SECRETS_DIR
+                  value: /run/secrets/smtp
                 {{- end }}
               securityContext:
                 {{- toYaml .Values.securityContext | nindent 16 }}
@@ -56,6 +48,11 @@ spec:
                   readOnly: true
                 - name: state
                   mountPath: /run/state
+                {{- if .Values.notification.email.username }}
+                - name: smtp-secrets
+                  mountPath: /run/secrets/smtp
+                  readOnly: true
+                {{- end }}
           volumes:
             - name: config
               configMap:
@@ -63,6 +60,11 @@ spec:
             - name: state
               persistentVolumeClaim:
                 claimName: {{ include "doctorlib-navigator.fullname" . }}-state
+            {{- if .Values.notification.email.username }}
+            - name: smtp-secrets
+              secret:
+                secretName: {{ include "doctorlib-navigator.fullname" . }}-smtp
+            {{- end }}
           {{- with .Values.nodeSelector }}
           nodeSelector:
             {{- toYaml . | nindent 12 }}

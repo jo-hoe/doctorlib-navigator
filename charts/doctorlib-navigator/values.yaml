@@ -6,12 +6,12 @@ image:
   # -- Overrides the image tag (defaults to chart appVersion)
   tag: ""
 
-# -- SMTP credentials rendered into a Kubernetes Secret
+# -- SMTP credentials rendered into a Kubernetes Secret and mounted as files at /run/secrets/smtp/
 notification:
   email:
-    # -- SMTP username injected as SMTP_USERNAME env var; overrides the config file value
+    # -- SMTP username written to the Secret; mounted as /run/secrets/smtp/smtp-username
     username: ""
-    # -- SMTP password injected as SMTP_PASSWORD env var; overrides the config file value
+    # -- SMTP password written to the Secret; mounted as /run/secrets/smtp/smtp-password
     password: ""
 
 # -- Application configuration mounted as config.yaml; see dev/config.yaml for a full example

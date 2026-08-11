@@ -3,7 +3,6 @@ from pydantic import ValidationError
 
 from app.config import AppConfig, BookingStep, DateWindow, DoctorConfig, EmailConfig, NotificationConfig
 
-
 def _make_doctor(**kwargs) -> dict:
     base = {
         "name": "Test Doctor",
@@ -77,14 +76,30 @@ def test_notification_config_no_channel():
     assert config.email is None
 
 
-def test_email_config_env_vars_override_credentials(monkeypatch):
+def test_email_config_secret_file_overrides_credentials(monkeypatch, tmp_path):
+    monkeypatch.delenv("SMTP_USERNAME", raising=False)
+    monkeypatch.delenv("SMTP_PASSWORD", raising=False)
+    (tmp_path / "smtp-username").write_text("secret-user")
+    (tmp_path / "smtp-password").write_text("secret-pass")
+    monkeypatch.setenv("SMTP_SECRETS_DIR", str(tmp_path))
+    config = EmailConfig.model_validate(
+        {
+            "smtp_host": "smtp.example.com",
+            "from_address": "from@example.com",
+            "to_addresses": ["to@example.com"],
+        }
+    )
+    assert config.username == "secret-user"
+    assert config.password.get_secret_value() == "secret-pass"
+
+
+def test_email_config_env_vars_used_when_no_secrets_dir(monkeypatch):
+    monkeypatch.delenv("SMTP_SECRETS_DIR", raising=False)
     monkeypatch.setenv("SMTP_USERNAME", "env-user")
     monkeypatch.setenv("SMTP_PASSWORD", "env-secret")
     config = EmailConfig.model_validate(
         {
             "smtp_host": "smtp.example.com",
-            "username": "file-user",
-            "password": "file-secret",
             "from_address": "from@example.com",
             "to_addresses": ["to@example.com"],
         }
@@ -96,6 +111,7 @@ def test_email_config_env_vars_override_credentials(monkeypatch):
 def test_email_config_file_credentials_used_when_no_env_vars(monkeypatch):
     monkeypatch.delenv("SMTP_USERNAME", raising=False)
     monkeypatch.delenv("SMTP_PASSWORD", raising=False)
+    monkeypatch.delenv("SMTP_SECRETS_DIR", raising=False)
     config = EmailConfig.model_validate(
         {
             "smtp_host": "smtp.example.com",
@@ -109,11 +125,10 @@ def test_email_config_file_credentials_used_when_no_env_vars(monkeypatch):
     assert config.password.get_secret_value() == "file-secret"
 
 
-# --- DateWindow edge cases ---
-
 def test_email_config_missing_credentials_rejected(monkeypatch):
     monkeypatch.delenv("SMTP_USERNAME", raising=False)
     monkeypatch.delenv("SMTP_PASSWORD", raising=False)
+    monkeypatch.delenv("SMTP_SECRETS_DIR", raising=False)
     with pytest.raises(ValidationError, match="username and password"):
         EmailConfig.model_validate(
             {

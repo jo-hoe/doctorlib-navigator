@@ -8,6 +8,17 @@ from pydantic import BaseModel, EmailStr, Field, SecretStr, model_validator
 
 _ENV_SMTP_USERNAME = "SMTP_USERNAME"
 _ENV_SMTP_PASSWORD = "SMTP_PASSWORD"
+_ENV_SMTP_SECRETS_DIR = "SMTP_SECRETS_DIR"
+_SECRET_FILE_USERNAME = "smtp-username"
+_SECRET_FILE_PASSWORD = "smtp-password"
+
+
+def _read_secret(secrets_dir: str, filename: str) -> str:
+    path = Path(secrets_dir) / filename
+    try:
+        return path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
 
 
 class EmailConfig(BaseModel):
@@ -20,15 +31,23 @@ class EmailConfig(BaseModel):
     use_tls: bool = True
 
     @model_validator(mode="after")
-    def _override_from_env(self) -> "EmailConfig":
-        if u := os.environ.get(_ENV_SMTP_USERNAME):
-            self.username = u
-        if p := os.environ.get(_ENV_SMTP_PASSWORD):
-            self.password = SecretStr(p)
+    def _override_credentials(self) -> "EmailConfig":
+        secrets_dir = os.environ.get(_ENV_SMTP_SECRETS_DIR)
+        if secrets_dir:
+            if u := _read_secret(secrets_dir, _SECRET_FILE_USERNAME):
+                self.username = u
+            if p := _read_secret(secrets_dir, _SECRET_FILE_PASSWORD):
+                self.password = SecretStr(p)
+        else:
+            if u := os.environ.get(_ENV_SMTP_USERNAME):
+                self.username = u
+            if p := os.environ.get(_ENV_SMTP_PASSWORD):
+                self.password = SecretStr(p)
         if not self.username or not self.password.get_secret_value():
             raise ValueError(
-                f"SMTP username and password must be set via config file or "
-                f"{_ENV_SMTP_USERNAME}/{_ENV_SMTP_PASSWORD} environment variables"
+                f"SMTP username and password must be provided via secret volume "
+                f"({_ENV_SMTP_SECRETS_DIR}) or env vars "
+                f"({_ENV_SMTP_USERNAME}/{_ENV_SMTP_PASSWORD})"
             )
         return self
 
