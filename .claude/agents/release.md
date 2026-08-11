@@ -80,7 +80,21 @@ Expected completion order: test (~1 min) → image-release (~2 min) → chart-re
 
 Report: `[Step 4/5] ✓ All workflows completed successfully`
 
-### Step 5 — Confirm
+### Step 5 — Verify and confirm
+
+Report: `[Step 5/5] Verifying published artifacts...`
+
+Verify the image tag exists:
+```bash
+gh api /users/jo-hoe/packages/container/doctorlib-navigator/versions --jq '.[0].metadata.container.tags'
+```
+
+Verify the chart is pullable:
+```bash
+helm show chart oci://ghcr.io/jo-hoe/charts/doctorlib-navigator --version <new-version>
+```
+
+If either verification fails, report the error and stop.
 
 Report: `[Step 5/5] ✓ Release complete`
 
