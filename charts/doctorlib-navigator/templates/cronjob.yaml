@@ -34,6 +34,8 @@ spec:
                   value: {{ .Values.runMode | quote }}
                 - name: LOG_LEVEL
                   value: {{ .Values.logLevel | quote }}
+                - name: STATE_FILE_PATH
+                  value: /run/state/state.json
                 {{- if .Values.notification.email.username }}
                 - name: SMTP_USERNAME
                   valueFrom:
@@ -54,10 +56,15 @@ spec:
                 - name: config
                   mountPath: /run/config
                   readOnly: true
+                - name: state
+                  mountPath: /run/state
           volumes:
             - name: config
               configMap:
                 name: {{ include "doctorlib-navigator.fullname" . }}-config
+            - name: state
+              persistentVolumeClaim:
+                claimName: {{ include "doctorlib-navigator.fullname" . }}-state
           {{- with .Values.nodeSelector }}
           nodeSelector:
             {{- toYaml . | nindent 12 }}

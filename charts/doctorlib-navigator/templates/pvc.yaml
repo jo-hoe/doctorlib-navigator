@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "doctorlib-navigator.fullname" . }}-state
+  labels:
+    {{- include "doctorlib-navigator.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: delete
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.state.storageSize }}
+  {{- with .Values.state.storageClassName }}
+  storageClassName: {{ . }}
+  {{- end }}

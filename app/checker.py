@@ -7,6 +7,7 @@ from app.config import DateWindow, DoctorConfig
 from app.doctolib.client import DoctolibClient
 from app.doctolib.models import AvailabilityResult, ProfileInfo
 from app.notification.notifier import Notifier
+from app.state.store import InMemoryStateStore, StateStore, sanitise_key
 
 logger = logging.getLogger(__name__)
 
@@ -22,18 +23,37 @@ class CheckResult:
 
 
 class AppointmentChecker:
-    def __init__(self, client: DoctolibClient, notifier: Notifier) -> None:
+    def __init__(
+        self,
+        client: DoctolibClient,
+        notifier: Notifier,
+        state: Optional[StateStore] = None,
+    ) -> None:
         self._client = client
         self._notifier = notifier
+        self._state: StateStore = state or InMemoryStateStore()
 
     def check_all(self, doctors: list[DoctorConfig]) -> list[CheckResult]:
         results = []
         for doctor in doctors:
             result = self._check_doctor(doctor)
             results.append(result)
-            if result.has_slots:
-                self._send_notification(result)
+            self._notify_if_changed(doctor, result)
         return results
+
+    def _notify_if_changed(self, doctor: DoctorConfig, result: CheckResult) -> None:
+        key = sanitise_key(doctor.name)
+        current = frozenset(
+            slot.start_date
+            for day in result.result.availabilities
+            for slot in day.slots
+        )
+        stored = self._state.load(key)
+        if current == stored:
+            logger.debug("%s: slots unchanged, skipping notification", doctor.name)
+            return
+        self._send_notification(result)
+        self._state.save(key, current)
 
     def _check_doctor(self, doctor: DoctorConfig) -> CheckResult:
         logger.info("Checking appointments for %s", doctor.name)

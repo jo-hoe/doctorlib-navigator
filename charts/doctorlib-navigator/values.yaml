@@ -70,6 +70,13 @@ runMode: "job"
 # -- Log level for the application: DEBUG, INFO, WARNING, ERROR
 logLevel: "INFO"
 
+# -- Persistent storage for deduplication state (prevents re-sending notifications across runs)
+state:
+  # -- Storage size for the state PVC
+  storageSize: "10Mi"
+  # -- StorageClassName for the state PVC; leave empty to use the cluster default
+  storageClassName: ""
+
 serviceAccount:
   # -- Create a dedicated ServiceAccount for the workload
   create: true

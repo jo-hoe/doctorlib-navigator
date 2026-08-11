@@ -10,22 +10,32 @@ from app.checker import AppointmentChecker
 from app.config import AppConfig, load_config
 from app.doctolib import create_client
 from app.notification import create_notifier
+from app.state.store import InMemoryStateStore, StateStore, create_file_store
 
 _RUN_MODE_JOB = "job"
 _RUN_MODE_DAEMON = "daemon"
+_ENV_STATE_PATH = "STATE_FILE_PATH"
 
 logger = logging.getLogger(__name__)
 
 
-def build_checker(config: AppConfig) -> AppointmentChecker:
+def _build_state_store() -> StateStore:
+    path = os.environ.get(_ENV_STATE_PATH)
+    if not path:
+        logger.warning("STATE_FILE_PATH not set; deduplication disabled (in-memory only)")
+        return InMemoryStateStore()
+    return create_file_store(path)
+
+
+def build_checker(config: AppConfig, state: Optional[StateStore] = None) -> AppointmentChecker:
     client = create_client()
     notifier = create_notifier(config.notification)
-    return AppointmentChecker(client=client, notifier=notifier)
+    return AppointmentChecker(client=client, notifier=notifier, state=state)
 
 
 def execute_once(config_path: str) -> int:
     config = load_config(config_path)
-    checker = build_checker(config)
+    checker = build_checker(config, _build_state_store())
     results = checker.check_all(config.doctors)
     found = sum(1 for r in results if r.has_slots)
     logger.info("Check complete: %d/%d doctors with available slots", found, len(results))
@@ -42,7 +52,7 @@ def start_with_schedule(
         signal.signal(signal.SIGINT, lambda _s, _f: stop_event.set())
 
     config = load_config(config_path)
-    checker = build_checker(config)
+    checker = build_checker(config, _build_state_store())
     interval = config.check_interval_seconds
 
     logger.info("Starting daemon, checking every %ds", interval)
