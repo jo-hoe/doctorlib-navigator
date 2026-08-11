@@ -1,6 +1,6 @@
 # doctorlib-navigator
 
-![Version: 0.4.0](https://img.shields.io/badge/Version-0.4.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.4.0](https://img.shields.io/badge/AppVersion-0.4.0-informational?style=flat-square)
+![Version: 0.5.0](https://img.shields.io/badge/Version-0.5.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.5.0](https://img.shields.io/badge/AppVersion-0.5.0-informational?style=flat-square)
 
 A Helm chart for the Doctolib appointment availability notifier
 
@@ -9,26 +9,23 @@ A Helm chart for the Doctolib appointment availability notifier
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | affinity | object | `{}` | Affinity rules for pod scheduling |
-| config | object | `{"availability_limit":5,"check_interval_seconds":300,"doctors":[],"notification":{}}` | Application configuration mounted as config.yaml; see dev/config.yaml for a full example |
-| config.availability_limit | int | `5` | Maximum number of available slots to include in the notification |
-| config.check_interval_seconds | int | `300` | Seconds between availability checks when runMode is daemon |
+| config | object | `{"doctors":[],"notification":{}}` | Application configuration mounted as config.yaml; see dev/config.yaml for a full example |
 | config.doctors | list | `[]` | - end_date: "2026-12-31" |
 | config.notification | object | `{}` | Notification channel config (non-sensitive fields only; credentials go in notification.email above) |
 | image.pullPolicy | string | `"IfNotPresent"` | Image pull policy |
 | image.repository | string | `"ghcr.io/jo-hoe/doctorlib-navigator"` | Image repository for the doctorlib-navigator container |
 | image.tag | string | `""` | Overrides the image tag (defaults to chart appVersion) |
 | job.executeOnStartUp | bool | `true` | Create an initial Job immediately on Helm install |
-| job.schedule | string | `"*/5 * * * *"` | Cron schedule for the CronJob (only used when runMode is job) |
+| job.schedule | string | `"*/5 * * * *"` | Cron schedule for the CronJob |
 | job.timeZone | string | `"Europe/Berlin"` | Timezone for the cron schedule |
 | job.ttlSecondsAfterFinished | int | `86400` | Seconds to keep finished Job pods before deletion |
 | logLevel | string | `"INFO"` | Log level for the application: DEBUG, INFO, WARNING, ERROR |
 | nodeSelector | object | `{}` | Node selector for pod scheduling |
-| notification | object | `{"email":{"password":"","username":""}}` | SMTP credentials rendered into a Kubernetes Secret |
-| notification.email.password | string | `""` | SMTP password injected as SMTP_PASSWORD env var; overrides the config file value |
-| notification.email.username | string | `""` | SMTP username injected as SMTP_USERNAME env var; overrides the config file value |
+| notification | object | `{"email":{"password":"","username":""}}` | SMTP credentials rendered into a Kubernetes Secret and mounted as files at /run/secrets/smtp/ |
+| notification.email.password | string | `""` | SMTP password written to the Secret; mounted as /run/secrets/smtp/smtp-password |
+| notification.email.username | string | `""` | SMTP username written to the Secret; mounted as /run/secrets/smtp/smtp-username |
 | podSecurityContext | object | `{"runAsNonRoot":true,"runAsUser":10001}` | Pod-level security context |
 | resources | object | `{"limits":{"cpu":"200m","memory":"128Mi"},"requests":{"cpu":"50m","memory":"64Mi"}}` | CPU and memory resource requests and limits |
-| runMode | string | `"job"` | Run mode: "job" runs once per cron trigger; "daemon" loops using check_interval_seconds |
 | securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":true}` | Container-level security context |
 | serviceAccount.create | bool | `true` | Create a dedicated ServiceAccount for the workload |
 | serviceAccount.name | string | `""` | Override the ServiceAccount name (defaults to the release fullname) |
