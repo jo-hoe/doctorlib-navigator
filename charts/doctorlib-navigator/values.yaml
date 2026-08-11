@@ -1,3 +1,9 @@
+# -- Override the name used for all resources (CronJob, ConfigMap, Secret, PVC, ServiceAccount).
+# -- Useful when deploying multiple instances for different doctors in the same namespace.
+# -- Must be a valid k8s name (lowercase, alphanumeric, hyphens; max 63 chars).
+# -- Example: "dr-example" → CronJob named "<release>-dr-example"
+nameOverride: ""
+
 image:
   # -- Image repository for the doctorlib-navigator container
   repository: ghcr.io/jo-hoe/doctorlib-navigator
