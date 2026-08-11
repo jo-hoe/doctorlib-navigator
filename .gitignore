@@ -6,7 +6,11 @@ dist/
 build/
 .pytest_cache/
 .coverage
+coverage.xml
 htmlcov/
 *.log
 .env
 .DS_Store
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.playwright-mcp/
