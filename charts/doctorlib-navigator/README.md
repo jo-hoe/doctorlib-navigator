@@ -1,6 +1,6 @@
 # doctorlib-navigator
 
-![Version: 0.7.0](https://img.shields.io/badge/Version-0.7.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.7.0](https://img.shields.io/badge/AppVersion-0.7.0-informational?style=flat-square)
+![Version: 0.8.0](https://img.shields.io/badge/Version-0.8.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.7.0](https://img.shields.io/badge/AppVersion-0.7.0-informational?style=flat-square)
 
 A Helm chart for the Doctolib appointment availability notifier
 
@@ -20,6 +20,7 @@ A Helm chart for the Doctolib appointment availability notifier
 | job.timeZone | string | `"Europe/Berlin"` | Timezone for the cron schedule |
 | job.ttlSecondsAfterFinished | int | `86400` | Seconds to keep finished Job pods before deletion |
 | logLevel | string | `"INFO"` | Log level for the application: DEBUG, INFO, WARNING, ERROR |
+| nameOverride | string | `""` | Example: "dr-example" → CronJob named "<release>-dr-example" |
 | nodeSelector | object | `{}` | Node selector for pod scheduling |
 | notification | object | `{"email":{"password":"","username":""}}` | SMTP credentials rendered into a Kubernetes Secret and mounted as files at /run/secrets/smtp/ |
 | notification.email.password | string | `""` | SMTP password written to the Secret; mounted as /run/secrets/smtp/smtp-password |
