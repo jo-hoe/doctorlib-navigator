@@ -2,7 +2,7 @@ apiVersion: v2
 name: doctorlib-navigator
 description: A Helm chart for the Doctolib appointment availability notifier
 type: application
-version: 0.3.0
-appVersion: "0.3.0"
+version: 0.4.0
+appVersion: "0.4.0"
 
 
