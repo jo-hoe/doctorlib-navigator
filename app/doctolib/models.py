@@ -94,6 +94,15 @@ class VisitMotive:
             and c.online_booking_status == "enabled_for_all"
         ]
 
+    def available_insurances(self) -> list[str]:
+        return sorted({
+            c.insurance
+            for c in self.configurations
+            if c.agenda_id is not None
+            and not c.disabled
+            and c.online_booking_status == "enabled_for_all"
+        })
+
 
 @dataclass(frozen=True)
 class Agenda:

@@ -16,7 +16,36 @@ notification:
 
 # -- Application configuration mounted as config.yaml; see dev/config.yaml for a full example
 config:
-  # -- List of Doctolib doctor profiles to monitor. Each entry requires: name (human-readable label), profile_slug (last URL path segment on doctolib.de), insurance ("public" or "private"), booking_steps (list of {label, value} pairs — use label "visit_motive" with the appointment type value). Optionally add windows (list of {start_date, end_date} ISO date ranges) to restrict which appointments trigger a notification; a slot matches if it falls in ANY window.
+  # -- List of Doctolib doctor profiles to monitor.
+  # -- To find the correct values for a doctor, run discovery locally (requires Python + dependencies):
+  # --   python discover.py <profile_slug>
+  # -- The profile_slug is the last path segment of the doctor's Doctolib URL, e.g.:
+  # --   https://www.doctolib.de/allgemeinmedizin/berlin/max-mustermann -> "max-mustermann"
+  # -- Discovery prints all bookable appointment types with their insurance options and
+  # -- a ready-to-paste values.yaml snippet.
+  # --
+  # -- Each entry:
+  # --   name:          Human-readable label used in notification subjects.
+  # --   profile_slug:  Last path segment of the doctor's Doctolib URL (see above).
+  # --   insurance:     "public" or "private". Omit if the doctor only has one option
+  # --                  (discovery will tell you which apply).
+  # --   booking_steps: List of {label, value} pairs. Always include one entry with
+  # --                  label "visit_motive" and the appointment type name as value
+  # --                  (exactly as shown by discovery mode).
+  # --   windows:       Optional list of {start_date, end_date} ISO date ranges.
+  # --                  A slot triggers a notification if it falls in ANY window.
+  # --                  Omit entirely for no date restriction.
+  # --
+  # -- Example (values discovered via RUN_MODE=discover):
+  # --   doctors:
+  # --     - name: "Dr. Example"
+  # --       profile_slug: "dr-example-berlin"
+  # --       insurance: "public"
+  # --       booking_steps:
+  # --         - label: "visit_motive"
+  # --           value: "Erstuntersuchung / Folgeuntersuchung"
+  # --       windows:
+  # --         - end_date: "2026-12-31"
   doctors: []
   # -- Notification channel config (non-sensitive fields only; credentials go in notification.email above)
   notification: {}
