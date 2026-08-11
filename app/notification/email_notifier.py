@@ -32,7 +32,8 @@ def _send(config: EmailConfig, message: MIMEMultipart) -> None:
     with smtplib.SMTP(config.smtp_host, config.smtp_port) as server:
         if config.use_tls:
             server.starttls()
-        server.login(config.username, config.password.get_secret_value())
+        if config.username:
+            server.login(config.username, config.password.get_secret_value())
         server.sendmail(
             config.from_address,
             config.to_addresses,

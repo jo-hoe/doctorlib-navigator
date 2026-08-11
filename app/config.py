@@ -43,11 +43,12 @@ class EmailConfig(BaseModel):
                 self.username = u
             if p := os.environ.get(_ENV_SMTP_PASSWORD):
                 self.password = SecretStr(p)
-        if not self.username or not self.password.get_secret_value():
+        # Only require credentials if at least one was supplied — allows no-auth SMTP relays
+        has_user = bool(self.username)
+        has_pass = bool(self.password.get_secret_value())
+        if (has_user or has_pass) and not (has_user and has_pass):
             raise ValueError(
-                f"SMTP username and password must be provided via secret volume "
-                f"({_ENV_SMTP_SECRETS_DIR}) or env vars "
-                f"({_ENV_SMTP_USERNAME}/{_ENV_SMTP_PASSWORD})"
+                "SMTP username and password must both be set or both be omitted"
             )
         return self
 

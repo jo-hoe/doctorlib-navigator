@@ -129,14 +129,32 @@ def test_email_config_missing_credentials_rejected(monkeypatch):
     monkeypatch.delenv("SMTP_USERNAME", raising=False)
     monkeypatch.delenv("SMTP_PASSWORD", raising=False)
     monkeypatch.delenv("SMTP_SECRETS_DIR", raising=False)
-    with pytest.raises(ValidationError, match="username and password"):
+    with pytest.raises(ValidationError, match="both be set or both be omitted"):
         EmailConfig.model_validate(
             {
                 "smtp_host": "smtp.example.com",
+                "username": "only-user",
                 "from_address": "from@example.com",
                 "to_addresses": ["to@example.com"],
             }
         )
+
+
+def test_email_config_no_credentials_allowed_for_no_auth_relay(monkeypatch):
+    monkeypatch.delenv("SMTP_USERNAME", raising=False)
+    monkeypatch.delenv("SMTP_PASSWORD", raising=False)
+    monkeypatch.delenv("SMTP_SECRETS_DIR", raising=False)
+    config = EmailConfig.model_validate(
+        {
+            "smtp_host": "smtp.internal.svc.cluster.local",
+            "smtp_port": 25,
+            "use_tls": False,
+            "from_address": "from@example.com",
+            "to_addresses": ["to@example.com"],
+        }
+    )
+    assert config.username == ""
+    assert config.password.get_secret_value() == ""
 
 
 def test_date_window_only_end_date():
