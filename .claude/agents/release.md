@@ -1,6 +1,13 @@
 ---
 name: release
 description: Release a new version of doctorlib-navigator. Supports two release types — full (new image + chart) and chart-only (chart bump, existing image). Run in foreground (run_in_background: false) so step progress is visible in real time.
+allowedTools:
+  - Read
+  - Edit
+  - Bash(git *)
+  - Bash(gh *)
+  - Bash(helm *)
+  - Bash(grep *)
 ---
 
 ## Release process for doctorlib-navigator
