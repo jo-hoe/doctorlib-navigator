@@ -93,14 +93,17 @@ def test_notification_on_new_slots():
     assert notifier.notify.call_count == 2
 
 
-def test_notification_when_slots_disappear():
+def test_no_notification_when_slots_disappear():
+    # Slots going away is not news — an empty result has no *new* slots, so the
+    # second run must stay silent. (State is still pruned; see
+    # test_state_cleared_after_slots_disappear.)
     state = InMemoryStateStore()
     checker, notifier = _make_checker(_make_result(["2026-08-10T09:00:00"]), state)
     checker.check_all([_make_doctor()])
 
     checker._client.fetch_availabilities.return_value = _make_result([])
     checker.check_all([_make_doctor()])
-    assert notifier.notify.call_count == 2
+    assert notifier.notify.call_count == 1
 
 
 def test_no_notification_when_still_no_slots():

@@ -18,6 +18,7 @@ from app.doctolib.models import (
     VisitMotive,
 )
 from app.notification.notifier import Notifier
+from app.state.store import InMemoryStateStore
 
 
 def _make_doctor(
@@ -70,6 +71,26 @@ def _make_result_with_slots() -> AvailabilityResult:
     return AvailabilityResult(
         availabilities=[AvailabilityDay(date="2026-08-10", slots=[slot])],
         total=1,
+        reason=None,
+        message=None,
+    )
+
+
+def _make_result_with_start_dates(start_dates: list[str]) -> AvailabilityResult:
+    """Build a result whose slots carry the given ISO start_date strings."""
+    slots = [
+        Slot(
+            start_date=sd,
+            end_date=sd,
+            agenda_id=2210330,
+            practice_id=670660,
+        )
+        for sd in start_dates
+    ]
+    day = start_dates[0][:10] if start_dates else "2026-08-10"
+    return AvailabilityResult(
+        availabilities=[AvailabilityDay(date=day, slots=slots)],
+        total=len(slots),
         reason=None,
         message=None,
     )
@@ -304,3 +325,98 @@ def test_check_all_does_not_notify_failed_doctor():
 
     assert len(results) == 1
     notifier.notify.assert_called_once()
+
+
+def _dedup_checker(results_sequence, state=None):
+    """Checker whose fetch returns each result in `results_sequence` per call."""
+    profile = _make_profile()
+    client = MagicMock(spec=DoctolibClient)
+    client.fetch_profile_info.return_value = profile
+    client.fetch_availabilities.side_effect = list(results_sequence)
+    notifier = MagicMock(spec=Notifier)
+    checker = AppointmentChecker(
+        client=client, notifier=notifier, state=state or InMemoryStateStore()
+    )
+    return checker, notifier
+
+
+def test_same_slots_do_not_notify_twice():
+    # Two identical runs: first notifies, second sees no new slots → silent.
+    state = InMemoryStateStore()
+    slots = ["2026-08-10T09:00:00+02:00"]
+    checker, notifier = _dedup_checker(
+        [_make_result_with_start_dates(slots)], state=state
+    )
+    checker.check_all([_make_doctor()])
+    notifier.notify.assert_called_once()
+
+    checker2, notifier2 = _dedup_checker(
+        [_make_result_with_start_dates(slots)], state=state
+    )
+    checker2.check_all([_make_doctor()])
+    notifier2.notify.assert_not_called()
+
+
+def test_new_slot_appearing_notifies_again():
+    # Run 1: {A}. Run 2: {A, B} — B is new, so notify, and the email lists only B.
+    state = InMemoryStateStore()
+    checker, notifier = _dedup_checker(
+        [_make_result_with_start_dates(["2026-08-10T09:00:00+02:00"])], state=state
+    )
+    checker.check_all([_make_doctor()])
+    notifier.notify.assert_called_once()
+
+    checker2, notifier2 = _dedup_checker(
+        [
+            _make_result_with_start_dates(
+                ["2026-08-10T09:00:00+02:00", "2026-08-10T10:00:00+02:00"]
+            )
+        ],
+        state=state,
+    )
+    checker2.check_all([_make_doctor()])
+    notifier2.notify.assert_called_once()
+    body = notifier2.notify.call_args[1]["body"]
+    assert "2026-08-10T10:00:00+02:00" in body  # the new slot
+    assert "2026-08-10T09:00:00+02:00" not in body  # already-notified slot omitted
+
+
+def test_disappearing_slot_does_not_notify():
+    # Run 1: {A, B}. Run 2: {A} (B booked). Nothing new → no notification.
+    state = InMemoryStateStore()
+    checker, notifier = _dedup_checker(
+        [
+            _make_result_with_start_dates(
+                ["2026-08-10T09:00:00+02:00", "2026-08-10T10:00:00+02:00"]
+            )
+        ],
+        state=state,
+    )
+    checker.check_all([_make_doctor()])
+    notifier.notify.assert_called_once()
+
+    checker2, notifier2 = _dedup_checker(
+        [_make_result_with_start_dates(["2026-08-10T09:00:00+02:00"])], state=state
+    )
+    checker2.check_all([_make_doctor()])
+    notifier2.notify.assert_not_called()
+
+
+def test_slot_reappearing_after_disappearing_notifies_again():
+    # A vanishes then returns; pruning to current availability means it counts as new.
+    state = InMemoryStateStore()
+    slot = ["2026-08-10T09:00:00+02:00"]
+
+    checker, notifier = _dedup_checker([_make_result_with_start_dates(slot)], state=state)
+    checker.check_all([_make_doctor()])
+    notifier.notify.assert_called_once()
+
+    # A disappears — state is pruned to empty.
+    checker2, notifier2 = _dedup_checker([_make_empty_result()], state=state)
+    checker2.check_all([_make_doctor()])
+    notifier2.notify.assert_not_called()
+
+    # A returns — treated as new again.
+    checker3, notifier3 = _dedup_checker([_make_result_with_start_dates(slot)], state=state)
+    checker3.check_all([_make_doctor()])
+    notifier3.notify.assert_called_once()

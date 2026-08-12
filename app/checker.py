@@ -73,12 +73,19 @@ class AppointmentChecker:
             for day in result.result.availabilities
             for slot in day.slots
         )
+        # `stored` holds slots we have already notified about that were still
+        # available on the previous run. Only slots we've never seen are worth a
+        # new notification; a slot we already reported must not alert again.
         stored = self._state.load(key)
-        if current == stored:
-            logger.debug("%s: slots unchanged, skipping notification", doctor.name)
-            return
-        self._send_notification(result)
+        new_slots = current - stored
+        # Persist `current` (not stored | current): slots that have disappeared
+        # are pruned, so state stays bounded and a slot that vanishes and later
+        # re-appears counts as new again.
         self._state.save(key, current)
+        if not new_slots:
+            logger.debug("%s: no new slots, skipping notification", doctor.name)
+            return
+        self._send_notification(result, new_slots)
 
     def _check_doctor(self, doctor: DoctorConfig) -> CheckResult:
         logger.info("Checking appointments for %s", doctor.name)
@@ -174,12 +181,12 @@ class AppointmentChecker:
             doctor, motive_id, agenda_ids, practice_ids, start_date=next_date
         )
 
-    def _send_notification(self, result: CheckResult) -> None:
+    def _send_notification(self, result: CheckResult, new_slots: frozenset[str]) -> None:
         subject = f"Doctolib: Appointment available – {result.doctor_name}"
-        slots = [slot for day in result.result.availabilities for slot in day.slots]
+        slots = sorted(new_slots)
         lines = [f"Appointments are now available for {result.doctor_name}!", ""]
         for slot in slots[:_NOTIFICATION_SLOTS_LIMIT]:
-            lines.append(f"  - {slot.start_date}")
+            lines.append(f"  - {slot}")
         if len(slots) > _NOTIFICATION_SLOTS_LIMIT:
             lines.append(f"  ... and {len(slots) - _NOTIFICATION_SLOTS_LIMIT} more")
         lines.append("")
