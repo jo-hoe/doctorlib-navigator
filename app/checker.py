@@ -78,13 +78,18 @@ class AppointmentChecker:
         # new notification; a slot we already reported must not alert again.
         stored = self._state.load(key)
         new_slots = current - stored
+        pruned = stored - current
+        if pruned:
+            logger.info("%s: %d slot(s) pruned (no longer available): %s", doctor.name, len(pruned), sorted(pruned))
         # Persist `current` (not stored | current): slots that have disappeared
         # are pruned, so state stays bounded and a slot that vanishes and later
         # re-appears counts as new again.
         self._state.save(key, current)
+        logger.info("%s: state saved — %d slot(s) tracked", doctor.name, len(current))
         if not new_slots:
-            logger.debug("%s: no new slots, skipping notification", doctor.name)
+            logger.info("%s: no new slots, skipping notification", doctor.name)
             return
+        logger.info("%s: %d new slot(s): %s", doctor.name, len(new_slots), sorted(new_slots))
         self._send_notification(result, new_slots)
 
     def _check_doctor(self, doctor: DoctorConfig) -> CheckResult:
