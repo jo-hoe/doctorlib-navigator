@@ -37,6 +37,6 @@ def _send(config: EmailConfig, message: MIMEMultipart) -> None:
         server.sendmail(
             config.from_address,
             config.to_addresses,
-            message.as_string(),
+            message.as_bytes(),
         )
     logger.info("Email sent to %s", config.to_addresses)

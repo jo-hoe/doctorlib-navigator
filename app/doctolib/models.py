@@ -149,6 +149,7 @@ class Place:
     id: str
     name: str
     practice_ids: list[int] = field(default_factory=list)
+    slug: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -156,6 +157,8 @@ class ProfileInfo:
     visit_motives: list[VisitMotive]
     agendas: list[Agenda]
     places: list[Place]
+    speciality_slug: Optional[str] = None
+    speciality_id: Optional[int] = None
 
     def find_motive_by_name(self, name: str) -> Optional[VisitMotive]:
         name_lower = name.lower()

@@ -2,12 +2,13 @@ import logging
 from dataclasses import dataclass
 from datetime import date
 from typing import Optional
+from urllib.parse import urlencode
 
 import httpx
 
 from app.config import DateWindow, DoctorConfig
 from app.doctolib.client import DoctolibAPIError, DoctolibClient
-from app.doctolib.models import AvailabilityResult, ProfileInfo, day_in_any_window
+from app.doctolib.models import AvailabilityResult, Place, ProfileInfo, day_in_any_window
 from app.notification.notifier import Notifier
 from app.state.store import InMemoryStateStore, StateStore, sanitise_key
 
@@ -22,6 +23,8 @@ class CheckResult:
     doctor_name: str
     has_slots: bool
     result: AvailabilityResult
+    booking_url: Optional[str] = None
+    profile_url: Optional[str] = None
 
 
 class AppointmentChecker:
@@ -103,7 +106,10 @@ class AppointmentChecker:
             result.total,
             window_desc,
         )
-        return CheckResult(doctor_name=doctor.name, has_slots=result.has_slots, result=result)
+        place = profile.places[0] if profile.places else None
+        booking_url = _build_booking_url(doctor, motive_id, place, profile.speciality_slug, profile.speciality_id)
+        profile_url = _build_profile_url(doctor, place, profile.speciality_slug)
+        return CheckResult(doctor_name=doctor.name, has_slots=result.has_slots, result=result, booking_url=booking_url, profile_url=profile_url)
 
     def _scan_agenda(
         self,
@@ -173,10 +179,17 @@ class AppointmentChecker:
         slots = [slot for day in result.result.availabilities for slot in day.slots]
         lines = [f"Appointments are now available for {result.doctor_name}!", ""]
         for slot in slots[:_NOTIFICATION_SLOTS_LIMIT]:
-            lines.append(f"  • {slot.start_date}")
+            lines.append(f"  - {slot.start_date}")
         if len(slots) > _NOTIFICATION_SLOTS_LIMIT:
-            lines.append(f"  … and {len(slots) - _NOTIFICATION_SLOTS_LIMIT} more")
-        lines += ["", "Book now: https://www.doctolib.de"]
+            lines.append(f"  ... and {len(slots) - _NOTIFICATION_SLOTS_LIMIT} more")
+        lines.append("")
+        if result.booking_url:
+            lines.append(f"Book now: {result.booking_url}")
+        if result.profile_url:
+            lines.append(f"Doctor profile: {result.profile_url}")
+        if not result.booking_url and not result.profile_url:
+            lines.append("Book now: https://www.doctolib.de")
+        lines += ["", "Have a nice day!", "Your friendly Robot Assistant"]
         self._notifier.notify(subject=subject, body="\n".join(lines))
 
 
@@ -230,3 +243,36 @@ def _window_description(windows: list[DateWindow]) -> str:
         end = w.end_date.isoformat() if w.end_date else "∞"
         parts.append(f"[{start} – {end}]")
     return ", ".join(parts)
+
+
+def _build_booking_url(
+    doctor: DoctorConfig,
+    motive_id: int,
+    place: Optional[Place],
+    speciality_slug: Optional[str],
+    speciality_id: Optional[int],
+) -> Optional[str]:
+    if place is None or speciality_slug is None or place.slug is None:
+        return None
+    path = f"{speciality_slug}/{place.slug}/{doctor.profile_slug}/booking/availabilities"
+    params: dict[str, object] = {
+        "telehealth": "false",
+        "placeId": place.id,
+        "insuranceSectorEnabled": "true",
+        "insuranceSector": doctor.insurance,
+        "motiveIds[]": motive_id,
+        "source": "profile",
+    }
+    if speciality_id is not None:
+        params = {"specialityId": speciality_id, **params}
+    return f"https://www.doctolib.de/{path}?{urlencode(params)}"
+
+
+def _build_profile_url(
+    doctor: DoctorConfig,
+    place: Optional[Place],
+    speciality_slug: Optional[str],
+) -> Optional[str]:
+    if place is None or speciality_slug is None or place.slug is None:
+        return None
+    return f"https://www.doctolib.de/{speciality_slug}/{place.slug}/{doctor.profile_slug}"

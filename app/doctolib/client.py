@@ -153,7 +153,10 @@ def _parse_profile_info(data: dict[str, object]) -> ProfileInfo:
     motives = [_parse_visit_motive(m) for m in raw.get("visit_motives", [])]  # type: ignore[union-attr]
     agendas = [_parse_agenda(a) for a in raw.get("agendas", [])]  # type: ignore[union-attr]
     places = [_parse_place(p) for p in raw.get("places", [])]  # type: ignore[union-attr]
-    return ProfileInfo(visit_motives=motives, agendas=agendas, places=places)
+    specialities = raw.get("specialities") or []
+    speciality_slug: Optional[str] = specialities[0]["slug"] if specialities else None  # type: ignore[index]
+    speciality_id: Optional[int] = specialities[0]["id"] if specialities else None  # type: ignore[index]
+    return ProfileInfo(visit_motives=motives, agendas=agendas, places=places, speciality_slug=speciality_slug, speciality_id=speciality_id)
 
 
 def _parse_visit_motive(raw: dict[str, object]) -> VisitMotive:
@@ -186,6 +189,7 @@ def _parse_place(raw: dict[str, object]) -> Place:
         id=raw[_KEY_ID],  # type: ignore[arg-type]
         name=raw[_KEY_NAME],  # type: ignore[arg-type]
         practice_ids=raw.get(_KEY_PRACTICE_IDS, []),  # type: ignore[arg-type]
+        slug=raw.get("slug"),  # type: ignore[arg-type]
     )
 
 
