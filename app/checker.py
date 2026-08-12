@@ -7,7 +7,7 @@ import httpx
 
 from app.config import DateWindow, DoctorConfig
 from app.doctolib.client import DoctolibAPIError, DoctolibClient
-from app.doctolib.models import AvailabilityResult, ProfileInfo
+from app.doctolib.models import AvailabilityResult, ProfileInfo, day_in_any_window
 from app.notification.notifier import Notifier
 from app.state.store import InMemoryStateStore, StateStore, sanitise_key
 
@@ -82,14 +82,20 @@ class AppointmentChecker:
         profile = self._client.fetch_profile_info(doctor.profile_slug)
         motive_id, agenda_ids, practice_ids = _resolve_booking_params(doctor, profile)
         api_start = _earliest_start(doctor.windows)
-        result = self._client.fetch_availabilities(
-            visit_motive_id=motive_id,
-            agenda_ids=agenda_ids,
-            practice_ids=practice_ids,
-            insurance_sector=doctor.insurance,
-            start_date=api_start,
-        )
-        result = result.with_date_filter(windows=doctor.windows, logger=logger)
+        # Query each agenda individually and merge, rather than sending all agenda_ids
+        # in one request. Doctolib "poisons" a multi-agenda request: if ANY agenda in
+        # the set is closed for online booking it returns reason=not_opened_availability
+        # with next_slot=null for the WHOLE response, masking the agendas that do have
+        # slots. info.json is no help for pre-filtering — it marks every agenda
+        # online_booking_status=enabled_for_all even when the availabilities layer
+        # reports them closed. The website avoids this by requesting one agenda at a
+        # time (confirmed via HAR); ssn_draft_info.json is just a 204 session-primer,
+        # not an agenda selector. So we scan per agenda and union the results.
+        per_agenda = [
+            self._scan_agenda(doctor, motive_id, agenda, practice_ids, api_start)
+            for agenda in agenda_ids
+        ]
+        result = AvailabilityResult.merge(per_agenda)
         window_desc = _window_description(doctor.windows)
         logger.info(
             "%s: %d slot(s) within window(s) %s",
@@ -98,6 +104,69 @@ class AppointmentChecker:
             window_desc,
         )
         return CheckResult(doctor_name=doctor.name, has_slots=result.has_slots, result=result)
+
+    def _scan_agenda(
+        self,
+        doctor: DoctorConfig,
+        motive_id: int,
+        agenda_id: int,
+        practice_ids: list[int],
+        start_date: Optional[date],
+    ) -> AvailabilityResult:
+        result = self._fetch_filtered(
+            doctor, motive_id, [agenda_id], practice_ids, start_date=start_date
+        )
+        # Doctolib's `limit` is a days-forward window, not a slot count. When the
+        # scanned window is empty it still reports the first later availability via
+        # `next_slot`; re-query around that date to fetch the concrete slots.
+        if result.total == 0 and result.next_slot:
+            result = self._probe_next_slot(
+                doctor, motive_id, [agenda_id], practice_ids, result
+            )
+        return result
+
+    def _fetch_filtered(
+        self,
+        doctor: DoctorConfig,
+        motive_id: int,
+        agenda_ids: list[int],
+        practice_ids: list[int],
+        start_date: Optional[date],
+    ) -> AvailabilityResult:
+        result = self._client.fetch_availabilities(
+            visit_motive_id=motive_id,
+            agenda_ids=agenda_ids,
+            practice_ids=practice_ids,
+            insurance_sector=doctor.insurance,
+            start_date=start_date,
+        )
+        return result.with_date_filter(windows=doctor.windows, logger=logger)
+
+    def _probe_next_slot(
+        self,
+        doctor: DoctorConfig,
+        motive_id: int,
+        agenda_ids: list[int],
+        practice_ids: list[int],
+        result: AvailabilityResult,
+    ) -> AvailabilityResult:
+        assert result.next_slot is not None
+        try:
+            next_date = date.fromisoformat(result.next_slot[:10])
+        except ValueError:
+            logger.debug("%s: unparseable next_slot %r", doctor.name, result.next_slot)
+            return result
+        if not day_in_any_window(next_date, doctor.windows):
+            logger.debug(
+                "%s: next_slot %s outside all configured windows",
+                doctor.name,
+                next_date,
+            )
+            return result
+        logger.debug("%s: re-querying availabilities at next_slot %s", doctor.name, next_date)
+        return self._fetch_filtered(
+            doctor, motive_id, agenda_ids, practice_ids, start_date=next_date
+        )
 
     def _send_notification(self, result: CheckResult) -> None:
         subject = f"Doctolib: Appointment available – {result.doctor_name}"

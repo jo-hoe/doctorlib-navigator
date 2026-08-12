@@ -1,3 +1,4 @@
+from datetime import date
 from unittest.mock import MagicMock, call
 
 import httpx
@@ -74,6 +75,34 @@ def _make_result_with_slots() -> AvailabilityResult:
     )
 
 
+def _make_empty_result_with_next_slot(next_slot: str) -> AvailabilityResult:
+    return AvailabilityResult(
+        availabilities=[AvailabilityDay(date="2026-08-12", slots=[])],
+        total=0,
+        reason=None,
+        message=None,
+        next_slot=next_slot,
+    )
+
+
+def _make_multi_agenda_profile(agenda_ids: list[int]) -> ProfileInfo:
+    motive = VisitMotive(
+        id=14010219,
+        name="Erstuntersuchung / Folgeuntersuchung",
+        configurations=[
+            AgendaConfiguration(
+                insurance="public",
+                agenda_id=aid,
+                online_booking_status="enabled_for_all",
+                disabled=False,
+            )
+            for aid in agenda_ids
+        ],
+    )
+    place = Place(id="practice-670660", name="Test", practice_ids=[670660])
+    return ProfileInfo(visit_motives=[motive], agendas=[], places=[place])
+
+
 def _make_checker(profile: ProfileInfo, avail: AvailabilityResult) -> tuple[AppointmentChecker, MagicMock]:
     client = MagicMock(spec=DoctolibClient)
     client.fetch_profile_info.return_value = profile
@@ -114,6 +143,78 @@ def test_check_all_multiple_doctors():
     assert len(results) == 2
     assert results[0].has_slots is False
     assert results[1].has_slots is True
+    notifier.notify.assert_called_once()
+
+
+def test_check_all_reprobe_on_next_slot_notifies():
+    # First fetch: empty window but a distant next_slot. Second fetch (at next_slot)
+    # returns real slots — the checker must re-query and notify.
+    profile = _make_profile()
+    client = MagicMock(spec=DoctolibClient)
+    client.fetch_profile_info.return_value = profile
+    client.fetch_availabilities.side_effect = [
+        _make_empty_result_with_next_slot("2026-11-12T08:30:00.000+01:00"),
+        _make_result_with_slots(),
+    ]
+    notifier = MagicMock(spec=Notifier)
+    checker = AppointmentChecker(client=client, notifier=notifier)
+
+    results = checker.check_all([_make_doctor()])
+
+    assert client.fetch_availabilities.call_count == 2
+    second_call = client.fetch_availabilities.call_args_list[1]
+    assert second_call[1]["start_date"] == date(2026, 11, 12)
+    assert results[0].has_slots is True
+    notifier.notify.assert_called_once()
+
+
+def test_check_all_next_slot_out_of_window_does_not_notify():
+    profile = _make_profile()
+    client = MagicMock(spec=DoctolibClient)
+    client.fetch_profile_info.return_value = profile
+    client.fetch_availabilities.return_value = _make_empty_result_with_next_slot(
+        "2026-11-12T08:30:00.000+01:00"
+    )
+    notifier = MagicMock(spec=Notifier)
+    checker = AppointmentChecker(client=client, notifier=notifier)
+
+    doctor = DoctorConfig(
+        name="Windowed Doc",
+        profile_slug="windowed",
+        booking_steps=[BookingStep(label="visit_motive", value="Erstuntersuchung / Folgeuntersuchung")],
+        windows=[DateWindow(end_date=date(2026, 8, 31))],
+    )
+    results = checker.check_all([doctor])
+
+    # next_slot (Nov) is outside the window (ends Aug 31): no re-query, no notification.
+    assert client.fetch_availabilities.call_count == 1
+    assert results[0].has_slots is False
+    notifier.notify.assert_not_called()
+
+
+def test_check_all_per_agenda_unmasks_open_agenda():
+    # Real-world poisoning case (hasert-lichtenberg): a profile with 2 public agendas
+    # where the *combined* query would return not_opened_availability. Scanning per
+    # agenda, one agenda is closed (empty, no next_slot) and the other reports a
+    # distant next_slot that re-queries into real slots. The merge must surface them.
+    profile = _make_multi_agenda_profile([2210330, 2210331])
+    client = MagicMock(spec=DoctolibClient)
+    client.fetch_profile_info.return_value = profile
+    client.fetch_availabilities.side_effect = [
+        # agenda 2210330: empty near-term + next_slot → re-query returns slots
+        _make_empty_result_with_next_slot("2026-11-12T08:30:00.000+01:00"),
+        _make_result_with_slots(),
+        # agenda 2210331: closed, no availability at all
+        _make_empty_result(),
+    ]
+    notifier = MagicMock(spec=Notifier)
+    checker = AppointmentChecker(client=client, notifier=notifier)
+
+    results = checker.check_all([_make_doctor()])
+
+    # 2 agendas → 3 calls (agenda 1 scan + re-query, agenda 2 scan).
+    assert client.fetch_availabilities.call_count == 3
+    assert results[0].has_slots is True
     notifier.notify.assert_called_once()
 
 

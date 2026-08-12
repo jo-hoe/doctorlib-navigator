@@ -29,6 +29,7 @@ _KEY_AGENDA_ID = "agenda_id"
 _KEY_PRACTICE_ID = "practice_id"
 _KEY_ID = "id"
 _KEY_NAME = "name"
+_KEY_NEXT_SLOT = "next_slot"
 
 _MAX_ATTEMPTS = 3
 _BACKOFF_BASE_SECONDS = 1.0
@@ -104,6 +105,10 @@ class DoctolibClient:
         start_date: Optional[date] = None,
         limit: int = 5,
     ) -> AvailabilityResult:
+        # NOTE: `limit` is a days-forward window, NOT a slot count. limit=5 scans only
+        # the 5 days from start_date. When that window is empty the response carries a
+        # `next_slot` datetime pointing at the first later availability — re-query with
+        # start_date=next_slot to fetch the concrete slots (see AppointmentChecker).
         if start_date is None:
             start_date = date.today()
 
@@ -194,6 +199,7 @@ def _parse_availability_result(raw: dict[str, object]) -> AvailabilityResult:
         total=raw.get("total", 0),  # type: ignore[arg-type]
         reason=raw.get("reason"),  # type: ignore[arg-type]
         message=raw.get("message"),  # type: ignore[arg-type]
+        next_slot=raw.get(_KEY_NEXT_SLOT),  # type: ignore[arg-type]
     )
 
 

@@ -80,6 +80,18 @@ _AVAILABILITY_STRING_SLOTS = {
 }
 
 
+# Real doctolib.de shape when the scanned window is empty but a later slot exists:
+# `total` is 0, all `slots` are empty, and `next_slot` points at the first availability.
+_AVAILABILITY_NEXT_SLOT = {
+    "total": 0,
+    "availabilities": [
+        {"date": "2026-08-12", "slots": []},
+        {"date": "2026-08-13", "slots": []},
+    ],
+    "next_slot": "2026-11-12T08:30:00.000+01:00",
+}
+
+
 def test_parse_profile_info():
     info = _parse_profile_info(_INFO_RESPONSE)
     assert len(info.visit_motives) == 1
@@ -109,6 +121,13 @@ def test_parse_availability_result_string_slots():
     assert slot.start_date == "2026-08-12T08:00:00.000+02:00"
     assert slot.end_date is None
     assert slot.agenda_id is None
+
+
+def test_parse_availability_result_reads_next_slot():
+    result = _parse_availability_result(_AVAILABILITY_NEXT_SLOT)
+    assert result.total == 0
+    assert result.has_slots is False
+    assert result.next_slot == "2026-11-12T08:30:00.000+01:00"
 
 
 def _make_client(mock_get_return: dict) -> DoctolibClient:

@@ -113,6 +113,53 @@ def test_availability_result_has_slots_false():
     assert result.has_slots is False
 
 
+def test_merge_dedups_slots_and_keeps_earliest_next_slot():
+    a = AvailabilityResult(
+        availabilities=[
+            AvailabilityDay(
+                date="2026-11-12",
+                slots=[Slot(start_date="2026-11-12T08:30:00+01:00")],
+            )
+        ],
+        total=1,
+        reason=None,
+        message=None,
+        next_slot="2026-12-01T09:00:00+01:00",
+    )
+    # Duplicate slot (same start_date) under another agenda + a distinct one.
+    b = AvailabilityResult(
+        availabilities=[
+            AvailabilityDay(
+                date="2026-11-12",
+                slots=[
+                    Slot(start_date="2026-11-12T08:30:00+01:00"),
+                    Slot(start_date="2026-11-12T09:00:00+01:00"),
+                ],
+            )
+        ],
+        total=2,
+        reason=None,
+        message=None,
+        next_slot="2026-11-20T09:00:00+01:00",
+    )
+    empty = AvailabilityResult(availabilities=[], total=0, reason="not_opened", message=None)
+
+    merged = AvailabilityResult.merge([a, b, empty])
+
+    assert merged.total == 2  # one duplicate collapsed
+    assert merged.next_slot == "2026-11-20T09:00:00+01:00"  # earliest of the two
+    starts = sorted(s.start_date for d in merged.availabilities for s in d.slots)
+    assert starts == ["2026-11-12T08:30:00+01:00", "2026-11-12T09:00:00+01:00"]
+
+
+def test_merge_empty_results():
+    empty = AvailabilityResult(availabilities=[], total=0, reason="not_opened", message=None)
+    merged = AvailabilityResult.merge([empty, empty])
+    assert merged.total == 0
+    assert merged.has_slots is False
+    assert merged.next_slot is None
+
+
 def test_with_date_filter_no_windows_returns_self():
     result = _make_result([("2026-08-10", 2)])
     assert result.with_date_filter([]) is result
@@ -144,6 +191,18 @@ def test_with_date_filter_multiple_windows():
     assert "2026-08-10" in dates
     assert "2026-11-03" in dates
     assert "2026-09-15" not in dates
+
+
+def test_with_date_filter_preserves_next_slot():
+    result = AvailabilityResult(
+        availabilities=[AvailabilityDay(date="2026-08-10", slots=[])],
+        total=0,
+        reason=None,
+        message=None,
+        next_slot="2026-11-12T08:30:00.000+01:00",
+    )
+    filtered = result.with_date_filter([DateWindow(end_date=date(2026, 8, 28))])
+    assert filtered.next_slot == "2026-11-12T08:30:00.000+01:00"
 
 
 def test_with_date_filter_logs_skipped_days():
