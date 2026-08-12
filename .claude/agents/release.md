@@ -18,15 +18,18 @@ Follow these steps in order. Do not skip steps. After each step, report completi
 
 Report: `[Step 1/5] Determining version and release type...`
 
-If not provided in the prompt, check the current versions:
+Check the current versions and what has changed since the last tag:
 ```bash
 grep -E '^version:|^appVersion:' charts/doctorlib-navigator/Chart.yaml
 git tag --sort=-v:refname | head -3
+git log $(git tag --sort=-v:refname | head -1)..HEAD --oneline
+git diff $(git tag --sort=-v:refname | head -1)..HEAD -- charts/doctorlib-navigator/ app/ main.py requirements.txt Dockerfile
 ```
 
-Ask the user (or infer from context) whether this is:
-- **Full release** — new image + new chart (code changes). Bumps both `version` and `appVersion`. Pushes a new semver tag to trigger `image-release.yml`.
-- **Chart-only release** — chart changes only, image unchanged. Bumps only `version`, keeps `appVersion` at the current value. No new tag pushed.
+**Determine release type from the diff:**
+- **No release needed** — only non-app, non-chart files changed (e.g. `.claude/`, docs, CI config). Stop here and report: `[Step 1/5] No release needed — no app or chart changes since last tag.`
+- **Full release** — app code changed (`app/`, `main.py`, `requirements.txt`, `Dockerfile`). Bumps both `version` and `appVersion`. Pushes a new semver tag to trigger `image-release.yml`.
+- **Chart-only release** — only chart templates/values changed (`charts/`), no app code changes. Bumps only `version`, keeps `appVersion`. No new tag pushed.
 
 Report: `[Step 1/5] ✓ Release type: <full|chart-only>, chart version: <new-version>, appVersion: <app-version>`
 
