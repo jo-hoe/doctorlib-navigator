@@ -6,9 +6,12 @@ from app.checker import AppointmentChecker
 from app.config import AppConfig, load_config
 from app.doctolib import create_client
 from app.notification import create_notifier
+from app.state.duration import parse_duration
+from app.state.prune import TTLPruneStrategy, create_ttl_file_store
 from app.state.store import InMemoryStateStore, StateStore, create_file_store
 
 _ENV_STATE_PATH = "STATE_FILE_PATH"
+_ENV_SLOT_TTL = "SLOT_TTL"
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +21,12 @@ def _build_state_store() -> StateStore:
     if not path:
         logger.warning("STATE_FILE_PATH not set; deduplication disabled (in-memory only)")
         return InMemoryStateStore()
-    return create_file_store(path)
+    ttl_raw = os.environ.get(_ENV_SLOT_TTL, "").strip()
+    if not ttl_raw:
+        return create_file_store(path)
+    ttl = parse_duration(ttl_raw)
+    logger.info("Slot TTL enabled: vanished slots retained for %s", ttl)
+    return create_ttl_file_store(path, TTLPruneStrategy(ttl))
 
 
 def build_checker(config: AppConfig, state: StateStore | None = None) -> AppointmentChecker:

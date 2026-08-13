@@ -75,6 +75,11 @@ state:
   storageSize: "10Mi"
   # -- StorageClassName for the state PVC; leave empty to use the cluster default
   storageClassName: ""
+  # -- Grace period for which a vanished slot is still treated as present, to absorb
+  # -- Doctolib jitter (slots that briefly disappear and reappear across consecutive runs).
+  # -- Kubernetes-style duration, e.g. "1s", "23m", "2h", "1h30m". Empty disables the grace
+  # -- period, pruning slots the instant they stop being reported (original behaviour).
+  slotTtl: ""
 
 serviceAccount:
   # -- Create a dedicated ServiceAccount for the workload

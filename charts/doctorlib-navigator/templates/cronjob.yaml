@@ -34,6 +34,10 @@ spec:
                   value: {{ .Values.logLevel | quote }}
                 - name: STATE_FILE_PATH
                   value: /run/state/state.json
+                {{- with .Values.state.slotTtl }}
+                - name: SLOT_TTL
+                  value: {{ . | quote }}
+                {{- end }}
                 {{- if .Values.notification.email.username }}
                 - name: SMTP_SECRETS_DIR
                   value: /run/secrets/smtp
