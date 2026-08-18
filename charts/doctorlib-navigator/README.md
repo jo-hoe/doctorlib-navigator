@@ -1,6 +1,6 @@
 # doctorlib-navigator
 
-![Version: 0.9.5](https://img.shields.io/badge/Version-0.9.5-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.9.5](https://img.shields.io/badge/AppVersion-0.9.5-informational?style=flat-square)
+![Version: 0.9.7](https://img.shields.io/badge/Version-0.9.7-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.9.7](https://img.shields.io/badge/AppVersion-0.9.7-informational?style=flat-square)
 
 A Helm chart for the Doctolib appointment availability notifier
 
@@ -30,7 +30,8 @@ A Helm chart for the Doctolib appointment availability notifier
 | securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":true}` | Container-level security context |
 | serviceAccount.create | bool | `true` | Create a dedicated ServiceAccount for the workload |
 | serviceAccount.name | string | `""` | Override the ServiceAccount name (defaults to the release fullname) |
-| state | object | `{"storageClassName":"","storageSize":"10Mi"}` | Persistent storage for deduplication state (prevents re-sending notifications across runs) |
+| state | object | `{"slotTtl":"","storageClassName":"","storageSize":"10Mi"}` | Persistent storage for deduplication state (prevents re-sending notifications across runs) |
+| state.slotTtl | string | `""` | period, pruning slots the instant they stop being reported (original behaviour). |
 | state.storageClassName | string | `""` | StorageClassName for the state PVC; leave empty to use the cluster default |
 | state.storageSize | string | `"10Mi"` | Storage size for the state PVC |
 | tolerations | list | `[]` | Tolerations for pod scheduling |

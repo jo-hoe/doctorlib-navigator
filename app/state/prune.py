@@ -12,31 +12,49 @@ class PruneStrategy(Protocol):
     """Decides which previously-seen slots stay 'live' between runs.
 
     ``last_seen`` maps each known slot to the timestamp it was last observed
-    as available. ``now`` is the current time. Returns the subset of slots
-    that should still be considered present.
+    as available. ``current`` is the set of slots reported in this run.
+    ``now`` is the current time. Returns the subset of slots that should
+    still be considered present.
     """
 
-    def live_slots(self, last_seen: dict[str, datetime], now: datetime) -> set[str]: ...
+    def live_slots(
+        self,
+        last_seen: dict[str, datetime],
+        current: frozenset[str],
+        now: datetime,
+    ) -> set[str]: ...
 
 
 class ImmediatePruneStrategy:
     """Drops a slot the instant it stops being reported (original behaviour)."""
 
-    def live_slots(self, last_seen: dict[str, datetime], now: datetime) -> set[str]:
-        return set(last_seen.keys())
+    def live_slots(
+        self,
+        last_seen: dict[str, datetime],
+        current: frozenset[str],
+        now: datetime,
+    ) -> set[str]:
+        return set(current)
 
 
 class TTLPruneStrategy:
     """Keeps a vanished slot 'live' until it has been absent longer than the TTL.
 
-    This absorbs Doctolib jitter, where a slot briefly disappears and reappears
-    across consecutive runs, so it does not trigger a spurious re-notification.
+    This absorbs both Doctolib jitter (slot briefly disappears and reappears
+    across consecutive runs) and spurious "slots got booked" re-notifications:
+    slots are only evicted once they have been continuously absent for longer
+    than the TTL.
     """
 
     def __init__(self, ttl: timedelta) -> None:
         self._ttl = ttl
 
-    def live_slots(self, last_seen: dict[str, datetime], now: datetime) -> set[str]:
+    def live_slots(
+        self,
+        last_seen: dict[str, datetime],
+        current: frozenset[str],
+        now: datetime,
+    ) -> set[str]:
         cutoff = now - self._ttl
         return {slot for slot, seen in last_seen.items() if seen >= cutoff}
 
@@ -52,6 +70,10 @@ class TTLFileStateStore:
 
     On disk the state is ``{key: {slot: last_seen_iso}}``. ``load`` and ``save``
     still speak ``frozenset[str]`` so callers are unaffected.
+
+    Absent slots are never dropped from the persisted map by ``save()`` —
+    their ``last_seen`` timestamp is simply left unchanged. Eviction is
+    delegated entirely to the strategy's ``live_slots()``.
     """
 
     def __init__(
@@ -89,16 +111,21 @@ class TTLFileStateStore:
 
     def load(self, key: str) -> frozenset[str]:
         last_seen = self._parse(self._read().get(key, {}))
-        return frozenset(self._strategy.live_slots(last_seen, self._clock()))
+        # Pass an empty frozenset: load() has no knowledge of the current run's
+        # slots, so ImmediatePruneStrategy returns everything in last_seen here.
+        # That is intentional — load() reflects what was live as of the last save.
+        return frozenset(self._strategy.live_slots(last_seen, frozenset(last_seen.keys()), self._clock()))
 
     def save(self, key: str, slots: frozenset[str]) -> None:
         now = self._clock()
         data = self._read()
         last_seen = self._parse(data.get(key, {}))
-        # Refresh currently-present slots to now; retain absent-but-live slots.
+        # Only refresh last_seen for currently-present slots.
+        # Absent slots keep their existing timestamp — the strategy decides
+        # when they are actually evicted based on TTL.
         for slot in slots:
             last_seen[slot] = now
-        live = self._strategy.live_slots(last_seen, now)
+        live = self._strategy.live_slots(last_seen, slots, now)
         data[key] = {
             slot: seen.isoformat()
             for slot, seen in last_seen.items()
