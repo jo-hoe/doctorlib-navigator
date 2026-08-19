@@ -12,8 +12,7 @@ Polls the Doctolib API for available appointments and sends an email notificatio
 ## Installation
 
 ```bash
-helm install doctorlib-navigator oci://ghcr.io/jo-hoe/charts/doctorlib-navigator \
-  --version 0.5.0
+helm install doctorlib-navigator oci://ghcr.io/jo-hoe/charts/doctorlib-navigator
 ```
 
 See [`charts/doctorlib-navigator/values.yaml`](charts/doctorlib-navigator/values.yaml) for all options, including how to configure `config.doctors`.
